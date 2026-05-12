@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#E8735A">
+  <title>우리 둘이서 💕</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: #FFF5EE; overscroll-behavior: none; }
+    body { font-family: 'Apple SD Gothic Neo','Nanum Gothic','Malgun Gothic',sans-serif; color: #3D2C2C; }
+    #root { width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FFF5EE; }
+    input, select, textarea, button { font-family: inherit; }
+    button:active { opacity: 0.7; }
+    .splash { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-size:14px; color:#9E7C7C; gap:10px; }
+    .splash .e { font-size:60px; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+  </style>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"><div class="splash"><div class="e">💕</div><div>우리 둘이서</div></div></div>
+
+  <script>
+    // ⚠️ ⚠️ ⚠️  여기에 본인의 Firebase 설정을 붙여넣으세요  ⚠️ ⚠️ ⚠️
+    // README.md 의 "Firebase 설정" 단계 참고
+    const firebaseConfig = {
+      apiKey: "AIzaSyDyM6qnMj1CjElNajKMWFd--2pcRydfOj4",
+      authDomain: "uriuri-38f6f.firebaseapp.com",
+      projectId: "uriuri-38f6f",
+      storageBucket: "uriuri-38f6f.firebasestorage.app",
+      messagingSenderId: "581002051198",
+      appId: "1:581002051198:web:7059c93335b7a1e58ca22f"
+    };
+    try {
+      firebase.initializeApp(firebaseConfig);
+      window.db = firebase.firestore();
+    } catch (e) {
+      document.getElementById('root').innerHTML = '<div class="splash"><div class="e">⚠️</div><div style="text-align:center;padding:20px;">Firebase 설정이 잘못됐어요.<br/>README.md 를 확인하세요.</div></div>';
+      throw e;
+    }
+  </script>
+
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  bg:"#FFF5EE",card:"#FFFFFF",primary:"#E8735A",primaryLight:"#FAD4CB",
+  secondary:"#F4A99B",sage:"#6FAB9A",sageLt:"#D4EBE6",
+  text:"#3D2C2C",textMuted:"#9E7C7C",border:"#F0DDD8",
+  yellow:"#F9DFA0",yellowLt:"#FFFAED",
+  green:"#1B7A4A",greenLt:"#EDFAF3",red:"#C62828",redLt:"#FFEBEE",
+};
+
+const base = { fontFamily:"'Apple SD Gothic Neo','Nanum Gothic','Malgun Gothic',sans-serif" };
+const card = (x={}) => ({ background:C.card,borderRadius:16,padding:"14px 15px",marginBottom:12,
+  boxShadow:"0 2px 12px rgba(61,44,44,0.07)",border:`1px solid ${C.border}`,...x });
+const inp = { width:"100%",border:`1.5px solid ${C.border}`,borderRadius:10,padding:"10px 12px",
+  fontSize:14,color:C.text,background:C.bg,outline:"none",boxSizing:"border-box",...base };
+const ta = { ...inp, resize:"vertical", minHeight:68 };
+const btn = (bg=C.primary,fg="#fff") => ({ background:bg,color:fg,border:"none",borderRadius:10,
+  padding:"11px 18px",cursor:"pointer",fontSize:14,fontWeight:700,...base,transition:"opacity 0.15s" });
+const chip = (bg=C.primaryLight,fg=C.text) => ({ background:bg,borderRadius:20,padding:"3px 9px",fontSize:11,fontWeight:700,color:fg,display:"inline-flex",alignItems:"center",gap:3 });
+const lbl = { fontSize:11,color:C.textMuted,marginBottom:4,display:"block",fontWeight:700,letterSpacing:"0.3px",textTransform:"uppercase" };
+const row = (gap=0,align="center",justify="flex-start") => ({ display:"flex",flexDirection:"row",gap,alignItems:align,justifyContent:justify });
+const col = (gap=0) => ({ display:"flex",flexDirection:"column",gap });
+
+let coupleCode = (typeof localStorage !== "undefined" ? localStorage.getItem("coupleCode") : "") || "";
+let _listeners = {};
+
+async function sGet(k) {
+  if (!coupleCode || !window.db) return null;
+  try {
+    const doc = await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).get();
+    return doc.exists ? doc.data().value : null;
+  } catch (e) { console.error("sGet error:", k, e); return null; }
+}
+async function sSet(k, v) {
+  if (!coupleCode || !window.db) return;
+  try {
+    await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).set({ value: v, updated: Date.now() });
+  } catch (e) { console.error("sSet error:", k, e); }
+}
+
+const todayStr = () => new Date().toISOString().split("T")[0];
+const thisMonth = () => new Date().toISOString().slice(0,7);
+const fmtDate = d => { try { return new Date(d+"T12:00").toLocaleDateString("ko-KR",{month:"short",day:"numeric"}); } catch{return d;} };
+const fmtMoney = n => Number(n).toLocaleString("ko-KR")+"원";
+const daysAgo = d => d ? Math.floor((Date.now()-new Date(d+"T12:00"))/86400000) : null;
+
+// ════ DINING HEATMAP ════
+function DiningHeatmap({ records }) {
+  const byDay={};
+  records.forEach(r=>{ byDay[r.date]=(byDay[r.date]||0)+1; });
+
+  const WEEKS=22;
+  const now=new Date(); now.setHours(12,0,0,0);
+  const start=new Date(now);
+  start.setDate(start.getDate()-now.getDay()-(WEEKS-1)*7);
+
+  // weeks[col][row] = day at week=col, weekday=row(0=Sun..6=Sat)
+  const weeks=[];
+  for(let w=0;w<WEEKS;w++){
+    const week=[];
+    for(let d=0;d<7;d++){
+      const dt=new Date(start); dt.setDate(dt.getDate()+w*7+d);
+      const ds=dt.toISOString().split("T")[0];
+      week.push({ds,count:byDay[ds]||0,future:dt>now,today:ds===todayStr()});
+    }
+    weeks.push(week);
+  }
+
+  const monthLabels=weeks.map((wk,wi)=>{
+    const m=new Date(wk[0].ds+"T12:00").getMonth();
+    if(wi===0||new Date(weeks[wi-1][0].ds+"T12:00").getMonth()!==m) return `${m+1}월`;
+    return "";
+  });
+
+  const cellColor=(count,future)=>{
+    if(future) return "transparent";
+    if(count===0) return "#EEE3DC";
+    if(count===1) return "#FAD4CB";
+    if(count===2) return "#F4A99B";
+    if(count===3) return "#E8735A";
+    return "#A83222";
+  };
+
+  const DAY_LABELS=["일","월","화","수","목","금","토"];
+  const totalInRange=weeks.reduce((s,wk)=>s+wk.reduce((ss,c)=>ss+(c.future?0:c.count),0),0);
+
+  // Build all grid cells in row-major order:
+  //   Row 0: [day-label "일"][22 cells]
+  //   Row 1: [day-label "월"][22 cells]
+  //   ...
+  const cells=[];
+  for(let dayIdx=0;dayIdx<7;dayIdx++){
+    cells.push(
+      <div key={`l-${dayIdx}`} style={{fontSize:8,color:C.textMuted,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:3,opacity:dayIdx%2===1?1:0,fontWeight:600,...base}}>
+        {DAY_LABELS[dayIdx]}
+      </div>
+    );
+    for(let wi=0;wi<WEEKS;wi++){
+      const c=weeks[wi][dayIdx];
+      cells.push(
+        <div key={`c-${dayIdx}-${wi}`} style={{
+          aspectRatio:"1/1",
+          background:cellColor(c.count,c.future),
+          borderRadius:3,
+          outline:c.today?`1.5px solid ${C.primary}`:"none",
+          outlineOffset:-1,
+        }} title={!c.future?`${fmtDate(c.ds)}: ${c.count}회`:""}/>
+      );
+    }
+  }
+
+  // Month label row: 23 columns matching the grid
+  const monthRow=[];
+  monthRow.push(<div key="mlabel"/>);
+  monthLabels.forEach((m,i)=>monthRow.push(
+    <div key={`m-${i}`} style={{fontSize:9,color:C.textMuted,fontWeight:700,textAlign:"left",overflow:"visible",whiteSpace:"nowrap",lineHeight:1}}>{m}</div>
+  ));
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:`16px repeat(${WEEKS},1fr)`,gap:2,marginBottom:3,minHeight:11}}>
+        {monthRow}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:`16px repeat(${WEEKS},1fr)`,gap:2}}>
+        {cells}
+      </div>
+      <div style={{...row(0,"center","space-between"),marginTop:8,flexWrap:"wrap",gap:4}}>
+        <span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>최근 5개월 · 총 {totalInRange}회</span>
+        <div style={row(4)}>
+          <span style={{fontSize:9,color:C.textMuted}}>적음</span>
+          {["#EEE3DC","#FAD4CB","#F4A99B","#E8735A","#A83222"].map(bg=>(
+            <div key={bg} style={{width:9,height:9,borderRadius:2,background:bg}}/>
+          ))}
+          <span style={{fontSize:9,color:C.textMuted}}>많음</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════ DINING TAB ════
+function DiningTab({names}) {
+  const [records,setRecords]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState({date:todayStr(),restaurant:"",amount:"",who:"둘다",memo:""});
+  const [photo,setPhoto]=useState(null);
+  const [viewPhoto,setViewPhoto]=useState(null);
+
+  useEffect(()=>{ sGet("dining").then(d=>setRecords(d||[])); },[]);
+  const saveAll=async d=>{await sSet("dining",d);setRecords(d);};
+
+  const handlePhoto=async e=>{
+    const file=e.target.files?.[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const maxDim=900;
+        const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+        const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const canvas=document.createElement("canvas");
+        canvas.width=w; canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        setPhoto(canvas.toDataURL("image/jpeg",0.72));
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const add=async()=>{
+    if(!form.restaurant.trim()) return;
+    await saveAll([...records,{...form,id:Date.now(),amount:Number(form.amount)||0,photo}]);
+    setForm({date:todayStr(),restaurant:"",amount:"",who:"둘다",memo:""});
+    setPhoto(null);
+    setShowForm(false);
+  };
+
+  const mRecs=records.filter(r=>r.date.startsWith(thisMonth()));
+  const total=mRecs.reduce((s,r)=>s+r.amount,0);
+
+  return (
+    <div>
+      <div style={card({background:"linear-gradient(135deg,#FFF0EC,#FAD4CB)",...row(0,"center","space-between")})}>
+        <div>
+          <div style={{fontSize:11,color:C.textMuted}}>이번달 외식</div>
+          <div style={{fontSize:40,fontWeight:800,color:C.primary,letterSpacing:"-1px"}}>{mRecs.length}<span style={{fontSize:18}}>번</span></div>
+          {total>0&&<div style={{fontSize:12,color:C.textMuted}}>총 {fmtMoney(total)}</div>}
+        </div>
+        <div style={{fontSize:50}}>🍽️</div>
+      </div>
+
+      <div style={card()}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>외식 히트맵 (최근 5개월)</div>
+        <DiningHeatmap records={records}/>
+      </div>
+
+      <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
+        {showForm?"✕ 닫기":"+ 외식 기록하기"}
+      </button>
+
+      {showForm&&(
+        <div style={card()}>
+          <label style={lbl}>날짜</label>
+          <input style={{...inp,marginBottom:10}} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+          <label style={lbl}>음식점 이름</label>
+          <input style={{...inp,marginBottom:10}} placeholder="예: 마포 갈비집, 이자카야..." value={form.restaurant} onChange={e=>setForm({...form,restaurant:e.target.value})}/>
+          <label style={lbl}>금액 (선택)</label>
+          <input style={{...inp,marginBottom:10}} type="number" placeholder="0" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
+          <label style={lbl}>누가 제안?</label>
+          <div style={{...row(8),marginBottom:10}}>
+            {[names.me,names.you,"둘다"].map(w=>(
+              <button key={w} onClick={()=>setForm({...form,who:w})} style={{flex:1,padding:9,border:`2px solid ${form.who===w?C.primary:C.border}`,borderRadius:10,background:form.who===w?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,color:C.text,...base,fontSize:13}}>{w}</button>
+            ))}
+          </div>
+          <label style={lbl}>📷 사진 (선택)</label>
+          {photo
+            ? (
+              <div style={{position:"relative",marginBottom:10,borderRadius:10,overflow:"hidden"}}>
+                <img src={photo} alt="" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}}/>
+                <button onClick={()=>setPhoto(null)} style={{position:"absolute",top:8,right:8,border:"none",background:"rgba(0,0,0,0.55)",color:"#fff",width:30,height:30,borderRadius:"50%",cursor:"pointer",fontSize:16,lineHeight:1,...base}}>×</button>
+              </div>
+            )
+            : (
+              <label style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10,cursor:"pointer",padding:"22px 12px",border:`1.5px dashed ${C.border}`,borderRadius:10,color:C.textMuted,fontSize:13,fontWeight:600,background:C.bg,...base}}>
+                📷 음식 사진 추가하기
+                <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+              </label>
+            )}
+          <label style={lbl}>메모 (선택)</label>
+          <input style={{...inp,marginBottom:12}} placeholder="메모..." value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
+          <button onClick={add} style={{...btn(),width:"100%"}}>저장</button>
+        </div>
+      )}
+
+      {[...records].reverse().map(r=>(
+        <div key={r.id} style={card({padding:r.photo?0:"14px 15px",overflow:"hidden"})}>
+          {r.photo&&(
+            <img src={r.photo} alt="" onClick={()=>setViewPhoto(r.photo)} style={{width:"100%",height:180,objectFit:"cover",display:"block",cursor:"pointer"}}/>
+          )}
+          <div style={{...row(12,"flex-start"),padding:r.photo?"12px 14px":0}}>
+            {!r.photo&&<div style={{width:42,height:42,borderRadius:12,background:C.primaryLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>🍜</div>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700}}>{r.restaurant}</div>
+              <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>
+                {fmtDate(r.date)} · {r.who} 제안{r.amount>0?` · ${fmtMoney(r.amount)}`:""}
+              </div>
+              {r.memo&&<div style={{fontSize:12,marginTop:4,background:C.bg,borderRadius:8,padding:"4px 8px"}}>{r.memo}</div>}
+            </div>
+            <button onClick={()=>saveAll(records.filter(x=>x.id!==r.id))} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:18,padding:0,alignSelf:"flex-start"}}>×</button>
+          </div>
+        </div>
+      ))}
+      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>아직 외식 기록이 없어요 🍽️</div>}
+
+      {viewPhoto&&(
+        <div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.93)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <img src={viewPhoto} alt="" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",borderRadius:8}}/>
+          <button onClick={()=>setViewPhoto(null)} style={{position:"absolute",top:20,right:20,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",width:38,height:38,borderRadius:"50%",cursor:"pointer",fontSize:22,lineHeight:1,...base}}>×</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════ CATS TAB ════
+const CAT_TASKS=[
+  {id:"toilet",label:"화장실 청소",emoji:"🚽"},
+  {id:"water",label:"물그릇 교체",emoji:"💧"},
+  {id:"bowl",label:"밥그릇 설거지",emoji:"🫧"},
+];
+
+function MilestoneCalendar({type,label,emoji,warning,history,names,onAdd,onRemove}) {
+  const [viewDate,setViewDate]=useState(new Date());
+  const [pickDay,setPickDay]=useState(null);
+  const y=viewDate.getFullYear(), m=viewDate.getMonth();
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+
+  const cells=[];
+  for(let i=0;i<firstDay;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+  const dk=d=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const byDate={}; history.forEach(h=>{byDate[h.date]=h;});
+
+  const sorted=[...history].sort((a,b)=>b.date.localeCompare(a.date));
+  const last=sorted[0];
+  const ago=last?daysAgo(last.date):null;
+  const urgent=ago!==null&&ago>=warning;
+
+  const dayRec=pickDay?byDate[pickDay]:null;
+  const meColor="#7BB7E8", youColor="#F4A99B";
+
+  return (
+    <div style={card({background:urgent?"#FFF5F0":C.card,border:`1px solid ${urgent?"#FFCDD2":C.border}`,marginBottom:8})}>
+      <div style={{...row(0,"center","space-between"),marginBottom:10}}>
+        <div style={row(8)}>
+          <span style={{fontSize:22}}>{emoji}</span>
+          <div>
+            <div style={{fontWeight:700,fontSize:14}}>{label}</div>
+            <div style={{fontSize:11,color:C.textMuted}}>{last?`총 ${history.length}번 기록됨`:"달력 날짜를 눌러 기록하기"}</div>
+          </div>
+        </div>
+        {urgent&&<span style={chip("#FFCDD2",C.red)}>⚠️ 슬슬 할 때!</span>}
+      </div>
+
+      <div style={{...row(0,"center","space-between"),marginBottom:6}}>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()-1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:12,color:C.text,fontWeight:700}}>◀</button>
+        <span style={{fontSize:12,fontWeight:800}}>{y}년 {m+1}월</span>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()+1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:12,color:C.text,fontWeight:700}}>▶</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {["일","월","화","수","목","금","토"].map((dl,i)=>(
+          <div key={dl} style={{textAlign:"center",fontSize:10,fontWeight:700,color:i===0?"#E57373":i===6?"#64B5F6":C.textMuted,padding:"2px 0"}}>{dl}</div>
+        ))}
+        {cells.map((d,i)=>{
+          if(!d) return <div key={i}/>;
+          const key=dk(d);
+          const rec=byDate[key];
+          const isToday=key===todayStr();
+          const recColor=rec?(rec.who===names.me?meColor:youColor):null;
+          const dow=(firstDay+d-1)%7;
+          return (
+            <button key={i} onClick={()=>setPickDay(key)} style={{aspectRatio:"1",border:isToday?`1.5px solid ${C.primary}`:`1px solid ${rec?recColor:"transparent"}`,borderRadius:6,background:rec?recColor:C.bg,cursor:"pointer",padding:0,position:"relative",color:rec?"#fff":(dow===0?"#E57373":dow===6?"#64B5F6":C.text),fontWeight:rec?800:isToday?800:500,fontSize:11,...base,boxShadow:rec?"0 1px 3px rgba(0,0,0,0.1)":"none",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div style={{lineHeight:1}}>{d}</div>
+              {rec&&<div style={{fontSize:9,marginTop:1,lineHeight:1}}>{emoji}</div>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{...row(12,"center"),marginTop:8,paddingTop:6,borderTop:`1px solid ${C.border}`,fontSize:10}}>
+        <div style={row(4)}><div style={{width:11,height:11,borderRadius:3,background:meColor}}/><span style={{color:C.textMuted,fontWeight:600}}>{names.me}</span></div>
+        <div style={row(4)}><div style={{width:11,height:11,borderRadius:3,background:youColor}}/><span style={{color:C.textMuted,fontWeight:600}}>{names.you}</span></div>
+        <span style={{fontSize:10,color:C.textMuted,marginLeft:"auto"}}>총 {history.length}회</span>
+      </div>
+      {last&&(
+        <div style={{marginTop:8,padding:"10px 12px",background:urgent?"linear-gradient(135deg,#FFEBEE,#FFCDD2)":"linear-gradient(135deg,#FFF5EE,#FAD4CB)",borderRadius:10,border:`1px solid ${urgent?"#FFCDD2":C.primaryLight}`}}>
+          <div style={{...row(8,"center","space-between"),marginBottom:sorted.length>1?6:0}}>
+            <div style={row(6)}>
+              <span style={{fontSize:18}}>{emoji}</span>
+              <div>
+                <div style={{fontSize:10,color:urgent?C.red:C.textMuted,fontWeight:700,letterSpacing:"0.3px"}}>마지막으로 산지</div>
+                <div style={{fontSize:18,fontWeight:800,color:urgent?C.red:C.text,letterSpacing:"-0.5px",lineHeight:1.1}}>
+                  {ago===0?"오늘":ago===1?"어제":`${ago}일`}<span style={{fontSize:12,fontWeight:600,marginLeft:3}}>{ago>1?"전":""}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:10,color:C.textMuted,fontWeight:600}}>최근 구매자</div>
+              <div style={{fontSize:13,fontWeight:800,color:last.who===names.me?meColor:youColor}}>{last.who===names.me?"💙":"🩷"} {last.who}</div>
+            </div>
+          </div>
+          {sorted.length>1&&(
+            <div style={{paddingTop:6,borderTop:`1px dashed ${urgent?"rgba(198,40,40,0.2)":C.primaryLight}`}}>
+              <div style={{fontSize:9,color:C.textMuted,fontWeight:700,marginBottom:3,letterSpacing:"0.3px"}}>이전 기록</div>
+              <div style={{...row(6),flexWrap:"wrap"}}>
+                {sorted.slice(1,4).map((h,i)=>{
+                  const a=daysAgo(h.date);
+                  return (
+                    <span key={i} style={{fontSize:10,padding:"3px 7px",background:"rgba(255,255,255,0.7)",borderRadius:10,color:C.text,fontWeight:600}}>
+                      {a}일 전 · <span style={{color:h.who===names.me?meColor:youColor,fontWeight:800}}>{h.who}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {pickDay&&(
+        <div onClick={()=>setPickDay(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,width:"100%",maxWidth:480,borderRadius:"20px 20px 0 0",padding:20,...base}}>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:4}}>{emoji} {label}</div>
+            <div style={{fontSize:13,color:C.textMuted,marginBottom:14}}>📅 {fmtDate(pickDay)}</div>
+            {dayRec
+              ? (
+                <>
+                  <div style={{padding:12,background:dayRec.who===names.me?"#EEF4FF":"#FFF0F5",borderRadius:10,marginBottom:12,textAlign:"center"}}>
+                    <div style={{fontSize:13,color:C.textMuted}}>이 날 표시한 사람</div>
+                    <div style={{fontSize:18,fontWeight:800,color:C.text,marginTop:2}}>{dayRec.who===names.me?`💙 ${dayRec.who}`:`🩷 ${dayRec.who}`}</div>
+                  </div>
+                  <div style={row(8)}>
+                    <button onClick={()=>setPickDay(null)} style={{...btn("#EEE",C.text),flex:1}}>닫기</button>
+                    <button onClick={()=>{onRemove(type,pickDay);setPickDay(null);}} style={{...btn(C.red),flex:1}}>🗑 삭제</button>
+                  </div>
+                </>
+              )
+              : (
+                <>
+                  <div style={{fontSize:13,color:C.textMuted,marginBottom:10}}>이 날 누가 {type==="food"?"사료를 샀":"모래를 갈았"}어요?</div>
+                  <div style={{...row(8),marginBottom:8}}>
+                    {[[names.me,meColor],[names.you,youColor]].map(([who,color])=>(
+                      <button key={who} onClick={()=>{onAdd(type,pickDay,who);setPickDay(null);}} style={{flex:1,padding:"14px 10px",border:"none",borderRadius:12,background:color,cursor:"pointer",fontSize:14,fontWeight:800,color:"#fff",...base}}>{who}</button>
+                    ))}
+                  </div>
+                  <button onClick={()=>setPickDay(null)} style={{...btn("#EEE",C.text),width:"100%"}}>취소</button>
+                </>
+              )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CatsTab({names}) {
+  const [records,setRecords]=useState([]);
+  const [milestones,setMilestones]=useState({food:[],litter:[]});
+
+  useEffect(()=>{
+    sGet("cats").then(d=>setRecords(d||[]));
+    sGet("catMilestones").then(d=>{
+      if(!d) setMilestones({food:[],litter:[]});
+      else if(!Array.isArray(d.food)||!Array.isArray(d.litter)){
+        const migrated={food:d.food?[d.food]:[],litter:d.litter?[d.litter]:[]};
+        setMilestones(migrated); sSet("catMilestones",migrated);
+      } else setMilestones(d);
+    });
+  },[]);
+
+  const saveRec=async d=>{await sSet("cats",d);setRecords(d);};
+  const addMs=async(type,date,who)=>{
+    const arr=(milestones[type]||[]).filter(x=>x.date!==date);
+    const u={...milestones,[type]:[...arr,{date,who}]};
+    await sSet("catMilestones",u); setMilestones(u);
+  };
+  const removeMs=async(type,date)=>{
+    const u={...milestones,[type]:(milestones[type]||[]).filter(x=>x.date!==date)};
+    await sSet("catMilestones",u); setMilestones(u);
+  };
+
+  const todayRec=records.find(r=>r.date===todayStr())||{date:todayStr(),tasks:{}};
+  const doneCount=Object.keys(todayRec.tasks||{}).length;
+
+  const toggle=async(taskId,who)=>{
+    const cur=todayRec.tasks[taskId];
+    const nTasks={...todayRec.tasks};
+    if(cur?.who===who) delete nTasks[taskId];
+    else nTasks[taskId]={who,time:new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})};
+    const filtered=records.filter(r=>r.date!==todayStr());
+    await saveRec([...filtered,{...todayRec,tasks:nTasks}]);
+  };
+
+  const recentDays=[...new Set(records.map(r=>r.date))].sort().reverse().slice(0,7);
+  const score=who=>records.reduce((s,r)=>s+Object.values(r.tasks||{}).filter(t=>t.who===who).length,0);
+
+  return (
+    <div>
+      <div style={card({background:"linear-gradient(135deg,#EEF7F5,#B2DFDB)",...row(0,"center","space-between")})}>
+        <div>
+          <div style={{fontSize:11,color:C.textMuted}}>오늘의 냐옹이 케어</div>
+          <div style={{fontSize:40,fontWeight:800,color:C.sage,letterSpacing:"-1px"}}>{doneCount}<span style={{fontSize:18}}>/{CAT_TASKS.length}</span></div>
+          <div style={{fontSize:12,color:C.textMuted}}>{doneCount===CAT_TASKS.length?"🎉 오늘 완료!":CAT_TASKS.length-doneCount+"개 남음"}</div>
+        </div>
+        <div style={{fontSize:50}}>🐱</div>
+      </div>
+
+      <div style={card()}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>오늘 할 일</div>
+        {CAT_TASKS.map(task=>{
+          const done=todayRec.tasks[task.id];
+          return (
+            <div key={task.id} style={{marginBottom:12}}>
+              <div style={{...row(8),marginBottom:6}}>
+                <span style={{fontSize:20}}>{task.emoji}</span>
+                <span style={{fontWeight:700,fontSize:14}}>{task.label}</span>
+                {done&&<span style={{...chip(C.sageLt,C.sage),marginLeft:"auto"}}>✓ {done.who} {done.time}</span>}
+              </div>
+              <div style={{...row(8),paddingLeft:28}}>
+                {[names.me,names.you].map(who=>(
+                  <button key={who} onClick={()=>toggle(task.id,who)} style={{flex:1,padding:8,border:`2px solid ${done?.who===who?C.sage:C.border}`,borderRadius:10,background:done?.who===who?C.sageLt:C.bg,cursor:"pointer",fontSize:12,fontWeight:done?.who===who?800:500,...base,color:C.text}}>
+                    {done?.who===who?"✓ ":""}{who}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:C.primary}}>📦 소모품 관리</div>
+      <MilestoneCalendar type="food" label="사료 구매" emoji="🥣" warning={30} history={milestones.food||[]} names={names} onAdd={addMs} onRemove={removeMs}/>
+      <MilestoneCalendar type="litter" label="모래 교체" emoji="🪣" warning={14} history={milestones.litter||[]} names={names} onAdd={addMs} onRemove={removeMs}/>
+
+      <div style={card()}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>케어 기여도 🏆</div>
+        <div style={row(12)}>
+          {[names.me,names.you].map(who=>(
+            <div key={who} style={{flex:1,textAlign:"center",background:C.bg,borderRadius:12,padding:12}}>
+              <div style={{fontSize:28}}>🐾</div>
+              <div style={{fontSize:26,fontWeight:800,color:C.sage}}>{score(who)}</div>
+              <div style={{fontSize:11,color:C.textMuted}}>총 케어 횟수</div>
+              <div style={{fontSize:13,fontWeight:700}}>{who}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {recentDays.length>0&&(
+        <div style={card()}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>최근 기록</div>
+          {recentDays.map(date=>{
+            const rec=records.find(r=>r.date===date);
+            const cnt=Object.keys(rec?.tasks||{}).length;
+            return (
+              <div key={date} style={{...row(0,"center","space-between"),padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
+                <span style={{fontSize:13,fontWeight:date===todayStr()?700:400,color:date===todayStr()?C.primary:C.text}}>{date===todayStr()?"오늘":fmtDate(date)}</span>
+                <div style={row(5)}>
+                  {CAT_TASKS.map(t=><span key={t.id} style={{fontSize:15,opacity:rec?.tasks[t.id]?1:0.15}}>{t.emoji}</span>)}
+                  <span style={{...chip(cnt===3?C.sageLt:C.primaryLight),marginLeft:4}}>{cnt}/3</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════ BUDGET TAB ════
+const EXP_CATS=["식비","외식","카페","쇼핑","교통","생활용품","의료/건강","문화/여가","반려동물","기타"];
+const INC_CATS=["월급","부수입","용돈","투자수익","기타"];
+
+function BudgetCalendar({records,onAdd,onDelete}) {
+  const [viewDate,setViewDate]=useState(new Date());
+  const [pickDay,setPickDay]=useState(null);
+  const [form,setForm]=useState({type:"expense",amount:"",category:"식비",memo:""});
+
+  const y=viewDate.getFullYear(), m=viewDate.getMonth();
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+
+  const cells=[];
+  for(let i=0;i<firstDay;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+  const dk=d=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const byDate={};
+  records.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+
+  const dayRecs=pickDay?(byDate[pickDay]||[]):[];
+
+  const handleAdd=async()=>{
+    if(!form.amount||isNaN(Number(form.amount))) return;
+    await onAdd({...form,date:pickDay,id:Date.now(),amount:Math.abs(Number(form.amount))});
+    setForm({type:"expense",amount:"",category:"식비",memo:""});
+  };
+
+  const openDay=key=>{
+    setPickDay(key);
+    setForm({type:"expense",amount:"",category:"식비",memo:""});
+  };
+
+  return (
+    <div style={card({marginBottom:12})}>
+      <div style={{...row(0,"center","space-between"),marginBottom:10}}>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()-1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,color:C.text,fontSize:14}}>◀</button>
+        <span style={{fontWeight:800,fontSize:14}}>{y}년 {m+1}월</span>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()+1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,color:C.text,fontSize:14}}>▶</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+        {["일","월","화","수","목","금","토"].map((dl,i)=>(
+          <div key={dl} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i===0?"#E57373":i===6?"#64B5F6":C.textMuted,padding:"2px 0"}}>{dl}</div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {cells.map((d,i)=>{
+          if(!d) return <div key={i}/>;
+          const key=dk(d);
+          const recs=byDate[key]||[];
+          const inc=recs.filter(r=>r.type==="income").reduce((s,r)=>s+r.amount,0);
+          const exp=recs.filter(r=>r.type==="expense").reduce((s,r)=>s+r.amount,0);
+          const net=inc-exp;
+          const isToday=key===todayStr();
+          const dow=(firstDay+d-1)%7;
+          const hasInc=inc>0, hasExp=exp>0;
+          const bg = (hasInc&&hasExp) ? "linear-gradient(135deg,#FFEBEE 50%,#EDFAF3 50%)"
+                   : hasExp ? "linear-gradient(135deg,#FFEBEE,#FFCDD2)"
+                   : hasInc ? "linear-gradient(135deg,#EDFAF3,#C8E6C9)"
+                   : isToday ? C.primaryLight : C.bg;
+          const short=v=>v>=10000?`${(v/10000).toFixed(v>=100000?0:1)}만`:`${Math.round(v/1000)}k`;
+          return (
+            <button key={i} onClick={()=>openDay(key)} style={{aspectRatio:"1",border:isToday?`1.5px solid ${C.primary}`:`1px solid ${recs.length?"transparent":C.border}`,borderRadius:8,background:bg,cursor:"pointer",padding:"2px 1px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",position:"relative",overflow:"hidden",boxShadow:recs.length?"0 1px 2px rgba(0,0,0,0.08)":"none",...base}}>
+              <div style={{fontSize:11,fontWeight:isToday||recs.length?800:500,color:dow===0?"#E57373":dow===6?"#64B5F6":C.text,lineHeight:1}}>{d}</div>
+              {hasExp&&<div style={{fontSize:8,fontWeight:800,color:C.red,lineHeight:1.1,marginTop:1}}>-{short(exp)}</div>}
+              {hasInc&&<div style={{fontSize:8,fontWeight:800,color:C.green,lineHeight:1.1,marginTop:1}}>+{short(inc)}</div>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{...row(12,"center"),marginTop:8,paddingTop:6,borderTop:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+        <div style={row(4)}><div style={{width:11,height:11,borderRadius:3,background:"linear-gradient(135deg,#FFEBEE,#FFCDD2)"}}/><span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>지출</span></div>
+        <div style={row(4)}><div style={{width:11,height:11,borderRadius:3,background:"linear-gradient(135deg,#EDFAF3,#C8E6C9)"}}/><span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>수입</span></div>
+        <span style={{fontSize:10,color:C.textMuted,fontStyle:"italic",marginLeft:"auto"}}>날짜 탭으로 추가</span>
+      </div>
+
+      {pickDay&&(
+        <div onClick={()=>setPickDay(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",borderRadius:"20px 20px 0 0",padding:18,...base}}>
+            <div style={{...row(0,"center","space-between"),marginBottom:12}}>
+              <div style={{fontWeight:800,fontSize:16}}>💰 {fmtDate(pickDay)}</div>
+              <button onClick={()=>setPickDay(null)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:C.textMuted,padding:0,lineHeight:1}}>×</button>
+            </div>
+
+            {dayRecs.length>0&&(
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6,letterSpacing:"0.3px"}}>이 날 내역 {dayRecs.length}건</div>
+                {dayRecs.map(r=>(
+                  <div key={r.id} style={{background:r.type==="income"?C.greenLt:C.redLt,borderRadius:10,padding:"9px 11px",marginBottom:5,...row(10,"center")}}>
+                    <span style={{fontSize:18}}>{r.type==="income"?"💵":"💸"}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{...row(0,"center","space-between")}}>
+                        <span style={{fontWeight:700,fontSize:13}}>{r.category}</span>
+                        <span style={{fontWeight:800,fontSize:13,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+                      </div>
+                      {r.memo&&<div style={{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.memo}</div>}
+                    </div>
+                    <button onClick={()=>onDelete(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:16,padding:"0 2px"}}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{padding:14,background:C.bg,borderRadius:14,border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:10,color:C.primary}}>+ 내역 추가</div>
+              <div style={{...row(8),marginBottom:10}}>
+                {[["expense","💸 지출",C.red,C.redLt],["income","💵 수입",C.green,C.greenLt]].map(([t,label,col,colLt])=>(
+                  <button key={t} onClick={()=>setForm({...form,type:t,category:t==="expense"?"식비":"월급"})} style={{flex:1,padding:9,border:`2px solid ${form.type===t?col:C.border}`,borderRadius:10,background:form.type===t?colLt:C.card,cursor:"pointer",fontWeight:700,...base,color:C.text,fontSize:13}}>{label}</button>
+                ))}
+              </div>
+              <div style={{...row(8),marginBottom:10}}>
+                <div style={{flex:1.4}}>
+                  <label style={lbl}>금액</label>
+                  <input style={{...inp,background:C.card}} type="number" inputMode="numeric" placeholder="0" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
+                </div>
+                <div style={{flex:1}}>
+                  <label style={lbl}>카테고리</label>
+                  <select style={{...inp,background:C.card}} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>
+                    {(form.type==="expense"?EXP_CATS:INC_CATS).map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{marginBottom:12}}>
+                <label style={lbl}>메모 (선택)</label>
+                <input style={{...inp,background:C.card}} placeholder="메모..." value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
+              </div>
+              <button onClick={handleAdd} disabled={!form.amount} style={{...btn(),width:"100%",opacity:!form.amount?0.5:1,cursor:!form.amount?"not-allowed":"pointer"}}>💾 저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BudgetTab() {
+  const [records,setRecords]=useState([]);
+  const [view,setView]=useState("calendar");
+
+  useEffect(()=>{sGet("budget").then(d=>setRecords(d||[]));}, []);
+  const saveAll=async d=>{await sSet("budget",d);setRecords(d);};
+  const addRec=async rec=>{await saveAll([...records,rec]);};
+  const delRec=async id=>{await saveAll(records.filter(r=>r.id!==id));};
+
+  const balance=records.reduce((s,r)=>s+(r.type==="income"?r.amount:-r.amount),0);
+  const mRecs=records.filter(r=>r.date.startsWith(thisMonth()));
+  const mInc=mRecs.filter(r=>r.type==="income").reduce((s,r)=>s+r.amount,0);
+  const mExp=mRecs.filter(r=>r.type==="expense").reduce((s,r)=>s+r.amount,0);
+  const catTotals={};
+  mRecs.filter(r=>r.type==="expense").forEach(r=>{catTotals[r.category]=(catTotals[r.category]||0)+r.amount;});
+  const topCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+  return (
+    <div>
+      <div style={card({background:balance>=0?"linear-gradient(135deg,#EDFAF3,#C8E6C9)":"linear-gradient(135deg,#FFEBEE,#FFCDD2)",textAlign:"center"})}>
+        <div style={{fontSize:11,color:C.textMuted,marginBottom:2}}>현재 잔액</div>
+        <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",color:balance>=0?C.green:C.red}}>{fmtMoney(Math.abs(balance))}</div>
+        <div style={{fontSize:11,marginBottom:10,color:balance>=0?C.green:C.red}}>{balance>=0?"흑자 🟢":"적자 🔴"}</div>
+        <div style={{...row(24,"center","center")}}>
+          <div><div style={{fontSize:11,color:C.textMuted}}>이달 수입</div><div style={{fontWeight:700,color:C.green}}>+{fmtMoney(mInc)}</div></div>
+          <div style={{width:1,height:24,background:C.border}}/>
+          <div><div style={{fontSize:11,color:C.textMuted}}>이달 지출</div><div style={{fontWeight:700,color:C.red}}>-{fmtMoney(mExp)}</div></div>
+        </div>
+      </div>
+
+      <div style={{...row(0,"center","space-between"),marginBottom:12}}>
+        <div style={{fontSize:13,color:C.textMuted}}>총 {records.length}건 기록</div>
+        <div style={row(4)}>
+          <button onClick={()=>setView("calendar")} style={{...btn(view==="calendar"?C.primary:"#EEE",view==="calendar"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📅 달력</button>
+          <button onClick={()=>setView("list")} style={{...btn(view==="list"?C.primary:"#EEE",view==="list"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📋 목록</button>
+        </div>
+      </div>
+
+      {view==="calendar"&&<BudgetCalendar records={records} onAdd={addRec} onDelete={delRec}/>}
+
+      {topCats.length>0&&(
+        <div style={card()}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>이달 지출 TOP</div>
+          {topCats.map(([cat,amt])=>(
+            <div key={cat} style={{marginBottom:8}}>
+              <div style={{...row(0,"center","space-between"),fontSize:12,marginBottom:3}}><span>{cat}</span><span style={{fontWeight:700}}>{fmtMoney(amt)}</span></div>
+              <div style={{height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                <div style={{width:`${mExp>0?(amt/mExp)*100:0}%`,height:"100%",background:C.primary,borderRadius:3}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view==="list"&&(
+        <>
+          {[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(r=>(
+            <div key={r.id} style={{...card(),...row(12,"center")}}>
+              <div style={{width:40,height:40,borderRadius:12,background:r.type==="income"?C.greenLt:C.redLt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{r.type==="income"?"💵":"💸"}</div>
+              <div style={{flex:1}}>
+                <div style={{...row(0,"center","space-between")}}>
+                  <span style={{fontWeight:700}}>{r.category}</span>
+                  <span style={{fontWeight:800,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+                </div>
+                <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(r.date)}{r.memo?` · ${r.memo}`:""}</div>
+              </div>
+              <button onClick={()=>delRec(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:18,padding:0}}>×</button>
+            </div>
+          ))}
+          {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>달력에서 날짜를 눌러 가계부를 시작해보세요 💰</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ════ FIGHTS TAB ════
+function FightsTab({names}) {
+  const [records,setRecords]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [expanded,setExpanded]=useState(null);
+  const [editModal,setEditModal]=useState(null);
+  const [sideForm,setSideForm]=useState({cause:"",want:"",resolution:""});
+  const [form,setForm]=useState({date:todayStr(),title:"",me:{cause:"",want:"",resolution:""},you:{cause:"",want:"",resolution:""},status:"ongoing"});
+
+  useEffect(()=>{sGet("fights").then(d=>setRecords(d||[]));}, []);
+  const saveAll=async d=>{await sSet("fights",d);setRecords(d);};
+
+  const add=async()=>{
+    if(!form.title.trim()) return;
+    await saveAll([...records,{...form,id:Date.now()}]);
+    setForm({date:todayStr(),title:"",me:{cause:"",want:"",resolution:""},you:{cause:"",want:"",resolution:""},status:"ongoing"});
+    setShowForm(false);
+  };
+
+  const saveSide=async()=>{
+    if(!editModal) return;
+    await saveAll(records.map(r=>r.id===editModal.id?{...r,[editModal.side]:sideForm}:r));
+    setEditModal(null);
+  };
+
+  const ongoing=records.filter(r=>r.status==="ongoing");
+  const resolved=records.filter(r=>r.status==="resolved");
+
+  const SideView=({data,label,color,onEdit})=>(
+    <div style={{background:color,borderRadius:10,padding:10,marginBottom:8}}>
+      <div style={{...row(0,"center","space-between"),marginBottom:6}}>
+        <span style={{fontSize:12,fontWeight:700,color:C.textMuted}}>{label}</span>
+        <button onClick={onEdit} style={{border:"none",background:"none",cursor:"pointer",fontSize:12,color:C.primary,...base,padding:0,fontWeight:700}}>✏️ 편집</button>
+      </div>
+      {data.cause&&<div style={{fontSize:13,marginBottom:4}}><span style={{color:C.textMuted,fontSize:11}}>원인 · </span>{data.cause}</div>}
+      {data.want&&<div style={{fontSize:13,marginBottom:4}}><span style={{color:C.textMuted,fontSize:11}}>원했던 것 · </span>{data.want}</div>}
+      {data.resolution&&<div style={{fontSize:13}}><span style={{color:C.textMuted,fontSize:11}}>해결방법 · </span>{data.resolution}</div>}
+      {!data.cause&&!data.want&&!data.resolution&&(
+        <div style={{fontSize:12,color:C.textMuted,textAlign:"center",padding:"4px 0"}}>아직 작성되지 않았어요. 편집해보세요</div>
+      )}
+    </div>
+  );
+
+  const FightCard=({r})=>(
+    <div style={card({border:`2px solid ${r.status==="ongoing"?"#FFCDD2":C.sageLt}`})}>
+      <div onClick={()=>setExpanded(expanded===r.id?null:r.id)} style={{...row(0,"flex-start","space-between"),cursor:"pointer"}}>
+        <div style={{flex:1}}>
+          <div style={{...row(6,"center"),flexWrap:"wrap"}}>
+            <span style={{fontWeight:700}}>{r.title}</span>
+            <span style={chip(r.status==="ongoing"?"#FFCDD2":C.sageLt)}>{r.status==="ongoing"?"🔴 진행중":"✅ 해결"}</span>
+          </div>
+          <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(r.date)}</div>
+        </div>
+        <span style={{color:C.textMuted,fontSize:13,marginTop:2}}>{expanded===r.id?"▲":"▼"}</span>
+      </div>
+
+      {expanded===r.id&&(
+        <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+          <SideView data={r.me||{}} label={`💙 ${names.me}의 입장`} color="#EEF4FF"
+            onEdit={()=>{setSideForm(r.me||{cause:"",want:"",resolution:""});setEditModal({id:r.id,side:"me"});}}/>
+          <SideView data={r.you||{}} label={`🩷 ${names.you}의 입장`} color="#FFF0F5"
+            onEdit={()=>{setSideForm(r.you||{cause:"",want:"",resolution:""});setEditModal({id:r.id,side:"you"});}}/>
+          <div style={{...row(8),marginTop:8}}>
+            <button onClick={()=>saveAll(records.map(x=>x.id===r.id?{...x,status:x.status==="resolved"?"ongoing":"resolved"}:x))} style={{...btn(r.status==="ongoing"?C.sage:C.primary),flex:1,fontSize:13}}>
+              {r.status==="ongoing"?"✅ 해결됨으로 표시":"🔴 진행중으로"}
+            </button>
+            <button onClick={()=>saveAll(records.filter(x=>x.id!==r.id))} style={{...btn("#DDD",C.text),padding:"11px 14px"}}>🗑️</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const SideInput=({side,label,color,nameColor})=>(
+    <div style={{background:color,borderRadius:10,padding:12,marginBottom:8}}>
+      <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:nameColor}}>{label} <span style={{fontSize:11,fontWeight:400,color:C.textMuted}}>(나중에 채워도 돼요)</span></div>
+      <label style={lbl}>원인</label>
+      <textarea style={{...ta,marginBottom:8,background:C.card}} placeholder="이 입장에서 본 원인" value={form[side].cause} onChange={e=>setForm({...form,[side]:{...form[side],cause:e.target.value}})}/>
+      <label style={lbl}>원했던 것</label>
+      <textarea style={{...ta,marginBottom:8,background:C.card}} placeholder="감정과 바람" value={form[side].want} onChange={e=>setForm({...form,[side]:{...form[side],want:e.target.value}})}/>
+      <label style={lbl}>해결 방법</label>
+      <textarea style={{...ta,background:C.card}} placeholder="앞으로 어떻게?" value={form[side].resolution} onChange={e=>setForm({...form,[side]:{...form[side],resolution:e.target.value}})}/>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={card({background:"#FFF5F5"})}>
+        <div style={row(0,"center","space-between")}>
+          <div>
+            <div style={{fontSize:11,color:C.textMuted,marginBottom:4}}>싸움 일지</div>
+            <div style={row(16)}>
+              <div><span style={{fontSize:24,fontWeight:800,color:C.red}}>{ongoing.length}</span><span style={{fontSize:12,color:C.textMuted}}> 진행중</span></div>
+              <div><span style={{fontSize:24,fontWeight:800,color:C.sage}}>{resolved.length}</span><span style={{fontSize:12,color:C.textMuted}}> 해결</span></div>
+            </div>
+          </div>
+          <div style={{fontSize:48}}>💬</div>
+        </div>
+        <div style={{fontSize:12,color:C.textMuted,marginTop:8,background:"#fff",borderRadius:8,padding:"6px 10px"}}>
+          💡 카드를 펼쳐 각자 자신의 입장을 직접 편집해보세요
+        </div>
+      </div>
+
+      <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
+        {showForm?"✕ 닫기":"+ 싸움 기록하기"}
+      </button>
+
+      {showForm&&(
+        <div style={card()}>
+          <label style={lbl}>날짜</label>
+          <input style={{...inp,marginBottom:10}} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+          <label style={lbl}>한 줄 요약 *</label>
+          <input style={{...inp,marginBottom:14}} placeholder="예: 집안일 분담 문제로 싸움" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+          <SideInput side="me" label={`💙 ${names.me}의 입장`} color="#EEF4FF" nameColor="#3A5FCD"/>
+          <SideInput side="you" label={`🩷 ${names.you}의 입장`} color="#FFF0F5" nameColor="#C2185B"/>
+          <button onClick={add} style={{...btn(),width:"100%",marginTop:4}}>저장하기</button>
+        </div>
+      )}
+
+      {ongoing.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.red,marginBottom:8}}>🔴 진행중인 싸움</div>{ongoing.map(r=><FightCard key={r.id} r={r}/>)}</>}
+      {resolved.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.sage,marginBottom:8,marginTop:8}}>✅ 해결된 싸움</div>{resolved.map(r=><FightCard key={r.id} r={r}/>)}</>}
+      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40,lineHeight:2}}>기록된 싸움이 없어요 💕<br/>사이좋게 지내고 있군요!</div>}
+
+      {editModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{background:C.card,borderRadius:"20px 20px 0 0",padding:20,width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto"}}>
+            <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>
+              {editModal.side==="me"?`💙 ${names.me}의 입장 편집`:`🩷 ${names.you}의 입장 편집`}
+            </div>
+            <label style={lbl}>원인</label>
+            <textarea style={{...ta,marginBottom:10}} value={sideForm.cause} onChange={e=>setSideForm({...sideForm,cause:e.target.value})}/>
+            <label style={lbl}>원했던 것</label>
+            <textarea style={{...ta,marginBottom:10}} value={sideForm.want} onChange={e=>setSideForm({...sideForm,want:e.target.value})}/>
+            <label style={lbl}>해결 방법</label>
+            <textarea style={{...ta,marginBottom:14}} value={sideForm.resolution} onChange={e=>setSideForm({...sideForm,resolution:e.target.value})}/>
+            <div style={row(10)}>
+              <button onClick={()=>setEditModal(null)} style={{...btn("#EEE",C.text),flex:1}}>취소</button>
+              <button onClick={saveSide} style={{...btn(),flex:2}}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════ ANNIVERSARY ════
+const ANNI_EMOJIS=["💑","💍","🌹","🎂","✈️","🏠","🐣","⭐","🎉","🥂"];
+
+function AnniversarySection() {
+  const [records,setRecords]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState({title:"",date:"",isAnnual:true,emoji:"💑"});
+
+  useEffect(()=>{sGet("anniversaries").then(d=>setRecords(d||[]));}, []);
+  const saveAll=async d=>{await sSet("anniversaries",d);setRecords(d);};
+
+  const add=async()=>{
+    if(!form.title.trim()||!form.date) return;
+    await saveAll([...records,{...form,id:Date.now()}]);
+    setForm({title:"",date:"",isAnnual:true,emoji:"💑"});
+    setShowForm(false);
+  };
+
+  const getDday=(dateStr,isAnnual)=>{
+    const today=new Date(); today.setHours(0,0,0,0);
+    const orig=new Date(dateStr+"T12:00");
+    if(isAnnual){
+      const ty=today.getFullYear();
+      let next=new Date(ty,orig.getMonth(),orig.getDate());
+      if(next<today) next=new Date(ty+1,orig.getMonth(),orig.getDate());
+      return Math.round((next-today)/86400000);
+    }
+    return Math.round((new Date(dateStr+"T12:00")-today)/86400000);
+  };
+
+  const getYears=d=>new Date().getFullYear()-new Date(d+"T12:00").getFullYear();
+  const sorted=[...records].sort((a,b)=>getDday(a.date,a.isAnnual)-getDday(b.date,b.isAnnual));
+
+  return (
+    <div>
+      <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
+        {showForm?"✕ 닫기":"+ 기념일 추가"}
+      </button>
+
+      {showForm&&(
+        <div style={card()}>
+          <label style={lbl}>이름</label>
+          <input style={{...inp,marginBottom:10}} placeholder="예: 첫 만남, 결혼기념일" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+          <label style={lbl}>날짜</label>
+          <input style={{...inp,marginBottom:10}} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+          <label style={lbl}>이모지</label>
+          <div style={{...row(6),flexWrap:"wrap",marginBottom:10}}>
+            {ANNI_EMOJIS.map(e=>(
+              <button key={e} onClick={()=>setForm({...form,emoji:e})} style={{width:36,height:36,borderRadius:8,border:`2px solid ${form.emoji===e?C.primary:C.border}`,background:form.emoji===e?C.primaryLight:C.bg,cursor:"pointer",fontSize:18}}>{e}</button>
+            ))}
+          </div>
+          <div style={{...row(10),marginBottom:12}}>
+            <button onClick={()=>setForm({...form,isAnnual:true})} style={{flex:1,padding:9,border:`2px solid ${form.isAnnual?C.primary:C.border}`,borderRadius:10,background:form.isAnnual?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,color:C.text,...base,fontSize:13}}>🔄 매년 반복</button>
+            <button onClick={()=>setForm({...form,isAnnual:false})} style={{flex:1,padding:9,border:`2px solid ${!form.isAnnual?C.primary:C.border}`,borderRadius:10,background:!form.isAnnual?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,color:C.text,...base,fontSize:13}}>📌 특정 날짜</button>
+          </div>
+          <button onClick={add} style={{...btn(),width:"100%"}}>저장</button>
+        </div>
+      )}
+
+      {sorted.map(r=>{
+        const dday=getDday(r.date,r.isAnnual);
+        const years=getYears(r.date);
+        const isClose=dday<=7&&dday>=0;
+        return (
+          <div key={r.id} style={card({border:`2px solid ${dday===0?C.primary:isClose?C.yellow:C.border}`})}>
+            <div style={row(12,"center")}>
+              <div style={{width:50,height:50,borderRadius:14,background:dday===0?C.primaryLight:isClose?C.yellowLt:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>{r.emoji}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700}}>{r.title}</div>
+                <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>
+                  {fmtDate(r.date)}{r.isAnnual&&years>0?` · ${years}주년`:""}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontWeight:800,fontSize:16,color:dday===0?C.primary:isClose?"#B8860B":C.text}}>
+                  {dday===0?"🎉 오늘!":dday>0?`D-${dday}`:`D+${Math.abs(dday)}`}
+                </div>
+                <button onClick={()=>saveAll(records.filter(x=>x.id!==r.id))} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:14,padding:0}}>×</button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>기념일을 추가해보세요 📅</div>}
+    </div>
+  );
+}
+
+// ════ BUCKET CALENDAR ════
+function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
+  const [viewDate,setViewDate]=useState(new Date());
+  const [pickDay,setPickDay]=useState(null);
+  const [form,setForm]=useState({existingId:"",title:"",time:"19:00",memo:"",by:"me"});
+
+  const y=viewDate.getFullYear(), m=viewDate.getMonth();
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+
+  const grid=[];
+  let day=1-firstDay;
+  for(let r=0;r<6;r++){
+    if(day>daysInMonth) break;
+    const week=[];
+    for(let c=0;c<7;c++){ week.push(day>=1&&day<=daysInMonth?day:null); day++; }
+    grid.push(week);
+  }
+
+  const dateItems={};
+  items.forEach(item=>{
+    const key=item.status==="accepted"?item.confirmedDate:item.proposal?.date;
+    if(key&&(item.status==="proposed"||item.status==="accepted")){
+      if(!dateItems[key]) dateItems[key]=[];
+      dateItems[key].push(item);
+    }
+  });
+
+  const dk=d=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const wishItems=items.filter(i=>i.status==="wish");
+  const dayItemsForPick=pickDay?(dateItems[pickDay]||[]):[];
+
+  const openDay=key=>{
+    setPickDay(key);
+    setForm({existingId:"",title:"",time:"19:00",memo:"",by:"me"});
+  };
+
+  const handleSubmit=()=>{
+    if(!pickDay) return;
+    const title=form.existingId?null:form.title.trim();
+    if(!form.existingId&&!title) return;
+    onPropose({itemId:form.existingId||null,title,date:pickDay,time:form.time,memo:form.memo,by:form.by});
+    setPickDay(null);
+  };
+
+  return (
+    <div style={card({marginBottom:12})}>
+      <div style={{...row(0,"center","space-between"),marginBottom:12}}>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()-1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,color:C.text,fontSize:14}}>◀</button>
+        <span style={{fontWeight:800,fontSize:14}}>{y}년 {m+1}월</span>
+        <button onClick={()=>{const d=new Date(viewDate);d.setMonth(d.getMonth()+1);setViewDate(d);}} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,color:C.text,fontSize:14}}>▶</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+        {["일","월","화","수","목","금","토"].map((dl,i)=>(
+          <div key={dl} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i===0?"#E57373":i===6?"#64B5F6":C.textMuted,padding:"2px 0"}}>{dl}</div>
+        ))}
+      </div>
+      {grid.map((week,wi)=>(
+        <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
+          {week.map((d,di)=>{
+            if(!d) return <div key={di}/>;
+            const key=dk(d);
+            const dayItems=dateItems[key]||[];
+            const hasProposed=dayItems.some(i=>i.status==="proposed");
+            const hasAccepted=dayItems.some(i=>i.status==="accepted");
+            const isToday=key===todayStr();
+            const bgGrad=hasAccepted?"linear-gradient(135deg,#A5D6A7,#6FAB9A)"
+                       :hasProposed?"linear-gradient(135deg,#FFE082,#FFB74D)"
+                       :isToday?C.primaryLight:C.bg;
+            const txt=(hasAccepted||hasProposed)?"#fff":(di===0?"#E57373":di===6?"#64B5F6":C.text);
+            return (
+              <button key={di} onClick={()=>openDay(key)} style={{aspectRatio:"1",border:isToday?`1.5px solid ${C.primary}`:`1px solid ${hasAccepted||hasProposed?"transparent":C.border}`,borderRadius:8,background:bgGrad,cursor:"pointer",padding:2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",position:"relative",overflow:"hidden",boxShadow:(hasAccepted||hasProposed)?"0 1px 3px rgba(0,0,0,0.12)":"none",...base}}>
+                <div style={{fontSize:11,fontWeight:isToday||hasProposed||hasAccepted?800:500,color:txt,lineHeight:1.1}}>{d}</div>
+                {hasAccepted&&<div style={{fontSize:13,marginTop:1,lineHeight:1}}>💝</div>}
+                {!hasAccepted&&hasProposed&&<div style={{fontSize:13,marginTop:1,lineHeight:1}}>💭</div>}
+                {dayItems.length>1&&<div style={{position:"absolute",top:1,right:2,fontSize:8,background:"rgba(255,255,255,0.85)",borderRadius:4,padding:"0 3px",color:C.text,fontWeight:800,lineHeight:1.2}}>+{dayItems.length-1}</div>}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+      <div style={{...row(14,"center"),marginTop:10,paddingTop:8,borderTop:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+        <div style={row(4)}><div style={{width:14,height:14,borderRadius:3,background:"linear-gradient(135deg,#FFE082,#FFB74D)"}}/><span style={{fontSize:11,color:C.textMuted,fontWeight:600}}>💭 제안중</span></div>
+        <div style={row(4)}><div style={{width:14,height:14,borderRadius:3,background:"linear-gradient(135deg,#A5D6A7,#6FAB9A)"}}/><span style={{fontSize:11,color:C.textMuted,fontWeight:600}}>💝 확정</span></div>
+        <span style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>· 날짜 탭으로 제안</span>
+      </div>
+
+      {pickDay&&(
+        <div onClick={()=>setPickDay(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",borderRadius:"20px 20px 0 0",padding:18,...base}}>
+            <div style={{...row(0,"center","space-between"),marginBottom:12}}>
+              <div style={{fontWeight:800,fontSize:16}}>📅 {fmtDate(pickDay)}</div>
+              <button onClick={()=>setPickDay(null)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:C.textMuted,padding:0,lineHeight:1}}>×</button>
+            </div>
+
+            {dayItemsForPick.length>0&&(
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6,letterSpacing:"0.3px"}}>이 날 예정</div>
+                {dayItemsForPick.map(it=>{
+                  const byName=it.proposal?.by==="me"?names.me:names.you;
+                  const otherName=it.proposal?.by==="me"?names.you:names.me;
+                  return (
+                    <div key={it.id} style={{background:it.status==="accepted"?"linear-gradient(135deg,#EDFAF3,#D4EBE6)":"linear-gradient(135deg,#FFFAED,#FFE9C5)",borderRadius:12,padding:11,marginBottom:6,border:`1px solid ${it.status==="accepted"?C.sageLt:C.yellow}`}}>
+                      <div style={{...row(6,"flex-start","space-between"),marginBottom:6}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:800,fontSize:14,marginBottom:3}}>{it.title}</div>
+                          <div style={{...row(8),flexWrap:"wrap"}}>
+                            {it.proposal?.time&&<span style={{fontSize:12,color:C.text,fontWeight:600}}>🕐 {it.proposal.time}</span>}
+                            <span style={{fontSize:11,color:C.textMuted}}>{it.proposal?.by==="me"?"💙":"🩷"} {byName} 제안</span>
+                          </div>
+                          {it.proposal?.memo&&<div style={{fontSize:12,color:C.textMuted,marginTop:4,padding:"4px 6px",background:"rgba(255,255,255,0.5)",borderRadius:5}}>💬 {it.proposal.memo}</div>}
+                        </div>
+                        <span style={chip(it.status==="accepted"?C.sage:C.yellow,"#fff")}>{it.status==="accepted"?"✅ 확정":"⏳ 대기"}</span>
+                      </div>
+                      {it.status==="proposed"&&(
+                        <div style={{...row(6),marginTop:6}}>
+                          <button onClick={()=>{onAccept(it.id);setPickDay(null);}} style={{...btn(C.sage),flex:2,fontSize:13,padding:"9px 10px"}}>✅ {otherName}가 수락</button>
+                          <button onClick={()=>{onReject(it.id);setPickDay(null);}} style={{...btn("#DDD",C.text),flex:1,fontSize:13,padding:"9px 10px"}}>거절</button>
+                        </div>
+                      )}
+                      {it.status==="accepted"&&(
+                        <button onClick={()=>{onComplete(it.id);setPickDay(null);}} style={{...btn(C.primary),width:"100%",marginTop:6,fontSize:13,padding:"9px 10px"}}>🎉 다녀왔어요!</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{padding:14,background:C.bg,borderRadius:14,border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:10,color:C.primary}}>💌 이 날 데이트 제안하기</div>
+
+              {wishItems.length>0&&(
+                <div style={{marginBottom:10}}>
+                  <label style={lbl}>찜 목록에서 선택</label>
+                  <select style={{...inp,background:C.card}} value={form.existingId} onChange={e=>setForm({...form,existingId:e.target.value,title:""})}>
+                    <option value="">+ 새로 입력하기</option>
+                    {wishItems.map(w=>(
+                      <option key={w.id} value={w.id}>{w.title} ({w.addedBy==="me"?names.me:names.you})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {!form.existingId&&(
+                <div style={{marginBottom:10}}>
+                  <label style={lbl}>뭐 하고 싶어요?</label>
+                  <input style={{...inp,background:C.card}} placeholder="예: 한강 자전거, 영화관 데이트..." value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+                </div>
+              )}
+
+              <div style={{...row(8),marginBottom:10}}>
+                <div style={{flex:1}}>
+                  <label style={lbl}>🕐 시간</label>
+                  <input style={{...inp,background:C.card}} type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})}/>
+                </div>
+                <div style={{flex:1.2}}>
+                  <label style={lbl}>제안하는 사람</label>
+                  <div style={row(4)}>
+                    {[["me",names.me,"💙"],["you",names.you,"🩷"]].map(([k,n,e])=>(
+                      <button key={k} onClick={()=>setForm({...form,by:k})} style={{flex:1,padding:"9px 4px",border:`1.5px solid ${form.by===k?C.primary:C.border}`,background:form.by===k?C.primaryLight:C.card,borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:form.by===k?800:600,color:C.text,...base}}>{e} {n}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{marginBottom:12}}>
+                <label style={lbl}>메모 (선택)</label>
+                <input style={{...inp,background:C.card}} placeholder="예: 예약 미리 해야 해" value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
+              </div>
+
+              <button onClick={handleSubmit} disabled={!form.existingId&&!form.title.trim()} style={{...btn(),width:"100%",fontSize:14,opacity:(!form.existingId&&!form.title.trim())?0.5:1,cursor:(!form.existingId&&!form.title.trim())?"not-allowed":"pointer"}}>💌 {form.by==="me"?names.you:names.me}에게 제안 보내기</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════ BUCKET LIST ════
+function BucketSection({names}) {
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState({title:"",addedBy:"me",memo:""});
+  const [proposing,setProposing]=useState(null);
+  const [propForm,setPropForm]=useState({date:todayStr(),time:"19:00",memo:"",by:"me"});
+  const [view,setView]=useState("calendar");
+
+  useEffect(()=>{sGet("bucket").then(d=>setItems(d||[]));}, []);
+  const saveAll=async d=>{await sSet("bucket",d);setItems(d);};
+
+  const add=async()=>{
+    if(!form.title.trim()) return;
+    await saveAll([...items,{...form,id:Date.now(),status:"wish",proposal:null,confirmedDate:null}]);
+    setForm({title:"",addedBy:"me",memo:""});
+    setShowForm(false);
+  };
+
+  const propose=async id=>{
+    await saveAll(items.map(it=>it.id===id?{...it,status:"proposed",proposal:{date:propForm.date,time:propForm.time,memo:propForm.memo,by:propForm.by}}:it));
+    setProposing(null);
+  };
+
+  // Used by calendar — either propose an existing item or create new one in proposed state
+  const proposeFromCal=async({itemId,title,date,time,memo,by})=>{
+    if(itemId){
+      const id=Number(itemId);
+      await saveAll(items.map(it=>it.id===id?{...it,status:"proposed",proposal:{date,time,memo,by}}:it));
+    } else if(title){
+      await saveAll([...items,{id:Date.now(),title,memo:"",addedBy:by,status:"proposed",proposal:{date,time,memo,by},confirmedDate:null}]);
+    }
+  };
+  const accept=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"accepted",confirmedDate:it.proposal?.date}:it));};
+  const reject=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"wish",proposal:null}:it));};
+  const complete=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"done"}:it));};
+
+  const statusColors={wish:C.bg,proposed:C.yellowLt,accepted:C.sageLt,done:"#F5F5F5"};
+  const statusLabels={wish:"💭 찜",proposed:"⏳ 제안 대기중",accepted:"✅ 날짜 확정!",done:"🎉 완료!"};
+
+  const ItemCard=({it})=>(
+    <div style={{background:statusColors[it.status],borderRadius:12,padding:12,marginBottom:8,border:`1px solid ${it.status==="accepted"?C.sageLt:it.status==="proposed"?C.yellow:C.border}`}}>
+      <div style={row(0,"flex-start","space-between")}>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:14,textDecoration:it.status==="done"?"line-through":"none",color:it.status==="done"?C.textMuted:C.text,marginBottom:4}}>{it.title}</div>
+          {it.memo&&<div style={{fontSize:12,color:C.textMuted,marginBottom:4}}>{it.memo}</div>}
+          <div style={{...row(5),flexWrap:"wrap"}}>
+            <span style={chip(it.status==="proposed"?C.yellow:it.status==="accepted"?C.sageLt:it.status==="done"?"#DDD":C.primaryLight)}>{statusLabels[it.status]}</span>
+            {(it.status==="proposed"||it.status==="accepted")&&it.proposal?.date&&(
+              <span style={chip(C.yellowLt)}>📅 {fmtDate(it.proposal.date)}{it.proposal?.time?` 🕐${it.proposal.time}`:""}</span>
+            )}
+            {it.proposal?.by&&(it.status==="proposed"||it.status==="accepted")&&(
+              <span style={{fontSize:10,color:C.textMuted}}>{it.proposal.by==="me"?"💙":"🩷"} {it.proposal.by==="me"?names.me:names.you} 제안</span>
+            )}
+          </div>
+          {it.proposal?.memo&&(it.status==="proposed"||it.status==="accepted")&&<div style={{fontSize:11,color:C.textMuted,marginTop:4,padding:"3px 6px",background:"rgba(255,255,255,0.5)",borderRadius:5,fontStyle:"italic"}}>💬 {it.proposal.memo}</div>}
+        </div>
+        <button onClick={()=>saveAll(items.filter(x=>x.id!==it.id))} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:16,padding:0,flexShrink:0}}>×</button>
+      </div>
+
+      <div style={{...row(6),marginTop:8,flexWrap:"wrap"}}>
+        {it.status==="wish"&&(
+          <button onClick={()=>{setProposing(it.id);setPropForm({date:todayStr(),time:"19:00",memo:"",by:it.addedBy||"me"});}} style={{...btn(C.yellow,C.text),fontSize:12,padding:"7px 12px"}}>📅 날짜 제안하기</button>
+        )}
+        {it.status==="proposed"&&(
+          <>
+            <button onClick={()=>accept(it.id)} style={{...btn(C.sage),fontSize:12,padding:"7px 12px"}}>✅ 수락!</button>
+            <button onClick={()=>reject(it.id)} style={{...btn("#DDD",C.text),fontSize:12,padding:"7px 12px"}}>❌ 거절</button>
+          </>
+        )}
+        {it.status==="accepted"&&(
+          <button onClick={()=>complete(it.id)} style={{...btn(C.primary),fontSize:12,padding:"7px 12px"}}>🎉 다녀왔어요!</button>
+        )}
+        {it.status==="done"&&(
+          <button onClick={()=>saveAll(items.map(x=>x.id===it.id?{...x,status:"wish",proposal:null,confirmedDate:null}:x))} style={{...btn("#EEE",C.text),fontSize:12,padding:"7px 12px"}}>↩️ 되돌리기</button>
+        )}
+      </div>
+
+      {proposing===it.id&&(
+        <div style={{marginTop:10,padding:12,background:C.card,borderRadius:10,border:`1px solid ${C.border}`}}>
+          <div style={{...row(8),marginBottom:10}}>
+            <div style={{flex:1.4}}>
+              <label style={lbl}>날짜</label>
+              <input style={inp} type="date" value={propForm.date} onChange={e=>setPropForm({...propForm,date:e.target.value})}/>
+            </div>
+            <div style={{flex:1}}>
+              <label style={lbl}>🕐 시간</label>
+              <input style={inp} type="time" value={propForm.time} onChange={e=>setPropForm({...propForm,time:e.target.value})}/>
+            </div>
+          </div>
+          <label style={lbl}>제안하는 사람</label>
+          <div style={{...row(6),marginBottom:8}}>
+            {[["me",names.me,"💙"],["you",names.you,"🩷"]].map(([k,n,em])=>(
+              <button key={k} onClick={()=>setPropForm({...propForm,by:k})} style={{flex:1,padding:"8px 4px",border:`1.5px solid ${propForm.by===k?C.primary:C.border}`,background:propForm.by===k?C.primaryLight:C.bg,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:propForm.by===k?800:600,color:C.text,...base}}>{em} {n}</button>
+            ))}
+          </div>
+          <input style={{...inp,marginBottom:8}} placeholder="메모 (선택)" value={propForm.memo} onChange={e=>setPropForm({...propForm,memo:e.target.value})}/>
+          <div style={row(8)}>
+            <button onClick={()=>setProposing(null)} style={{...btn("#EEE",C.text),flex:1,fontSize:13}}>취소</button>
+            <button onClick={()=>propose(it.id)} style={{...btn(),flex:2,fontSize:13}}>💌 제안하기</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const meItems=items.filter(it=>it.addedBy==="me");
+  const youItems=items.filter(it=>it.addedBy==="you");
+  const pendingProposals=items.filter(it=>it.status==="proposed");
+
+  return (
+    <div>
+      {pendingProposals.length>0&&(
+        <div style={{background:"linear-gradient(135deg,#FFE9C5,#FFDBA5)",borderRadius:14,padding:"11px 13px",marginBottom:12,border:`1.5px solid ${C.yellow}`,boxShadow:"0 2px 8px rgba(255,183,77,0.25)"}}>
+          <div style={{...row(8,"center"),marginBottom:4}}>
+            <span style={{fontSize:18}}>🔔</span>
+            <div style={{fontSize:13,fontWeight:800,color:C.text}}>대기중인 데이트 제안 {pendingProposals.length}개</div>
+          </div>
+          <div style={{fontSize:11,color:C.textMuted,marginLeft:26}}>
+            {pendingProposals.slice(0,2).map(p=>{
+              const by=p.proposal?.by==="me"?names.me:names.you;
+              const to=p.proposal?.by==="me"?names.you:names.me;
+              return `${by}→${to}: ${p.title} (${fmtDate(p.proposal?.date)}${p.proposal?.time?` ${p.proposal.time}`:""})`;
+            }).join(" · ")}
+            {pendingProposals.length>2&&` 외 ${pendingProposals.length-2}개`}
+          </div>
+        </div>
+      )}
+
+      <div style={{...row(0,"center","space-between"),marginBottom:12}}>
+        <div style={{fontSize:13,color:C.textMuted}}>총 {items.length}개 · 완료 {items.filter(i=>i.status==="done").length}개</div>
+        <div style={row(4)}>
+          <button onClick={()=>setView("calendar")} style={{...btn(view==="calendar"?C.primary:"#EEE",view==="calendar"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📅 달력</button>
+          <button onClick={()=>setView("list")} style={{...btn(view==="list"?C.primary:"#EEE",view==="list"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📋 목록</button>
+        </div>
+      </div>
+
+      {view==="calendar"&&<BucketCalendar items={items} names={names} onPropose={proposeFromCal} onAccept={accept} onReject={reject} onComplete={complete}/>}
+
+      <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
+        {showForm?"✕ 닫기":"+ 데이트신청 추가"}
+      </button>
+
+      {showForm&&(
+        <div style={card()}>
+          <label style={lbl}>하고 싶은 것</label>
+          <input style={{...inp,marginBottom:10}} placeholder="예: 제주도 여행, 한강 피크닉..." value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+          <label style={lbl}>누가 추가?</label>
+          <div style={{...row(8),marginBottom:10}}>
+            {["me","you"].map(side=>(
+              <button key={side} onClick={()=>setForm({...form,addedBy:side})} style={{flex:1,padding:9,border:`2px solid ${form.addedBy===side?C.primary:C.border}`,borderRadius:10,background:form.addedBy===side?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,...base,fontSize:13,color:C.text}}>
+                {side==="me"?`💙 ${names.me}`:`🩷 ${names.you}`}
+              </button>
+            ))}
+          </div>
+          <label style={lbl}>메모 (선택)</label>
+          <input style={{...inp,marginBottom:12}} placeholder="어디서, 어떻게..." value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
+          <button onClick={add} style={{...btn(),width:"100%"}}>추가하기</button>
+        </div>
+      )}
+
+      {view==="list"&&(
+        <>
+          {meItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#3A5FCD"}}>💙 {names.me}의 데이트신청</div>{meItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
+          {youItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#C2185B",marginTop:meItems.length>0?12:0}}>🩷 {names.you}의 데이트신청</div>{youItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
+          {items.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>달력에서 날짜를 눌러 데이트를 제안하거나<br/>데이트신청을 먼저 추가해보세요 💕</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ════ GRATITUDE ════
+function GratitudeSection({names}) {
+  const [records,setRecords]=useState([]);
+  const [today_,setToday_]=useState({me:"",you:""});
+
+  useEffect(()=>{
+    sGet("gratitude").then(data=>{
+      const d=data||[];
+      setRecords(d);
+      const td=d.find(r=>r.date===todayStr());
+      if(td) setToday_({me:td.me||"",you:td.you||""});
+    });
+  },[]);
+
+  const save=async(field,val)=>{
+    const entry={...today_,[field]:val};
+    setToday_(entry);
+    const filtered=records.filter(r=>r.date!==todayStr());
+    const updated=[...filtered,{date:todayStr(),...entry}].sort((a,b)=>b.date.localeCompare(a.date));
+    await sSet("gratitude",updated);
+    setRecords(updated);
+  };
+
+  const past=records.filter(r=>r.date!==todayStr()).slice(0,7);
+
+  return (
+    <div>
+      <div style={card({background:"linear-gradient(135deg,#FFF9C4,#FFF3E0)"})}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#B8860B"}}>💌 오늘의 감사 메모</div>
+        <label style={lbl}>💙 {names.me}의 감사 메모</label>
+        <textarea style={{...ta,marginBottom:12,background:"#EEF4FF"}} placeholder={`${names.you}에게 감사한 점을 적어보세요...`} value={today_.me} onChange={e=>save("me",e.target.value)}/>
+        <label style={lbl}>🩷 {names.you}의 감사 메모</label>
+        <textarea style={{...ta,background:"#FFF0F5"}} placeholder={`${names.me}에게 감사한 점을 적어보세요...`} value={today_.you} onChange={e=>save("you",e.target.value)}/>
+      </div>
+
+      {past.length>0&&(
+        <div style={card()}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>📖 지난 감사 기록</div>
+          {past.map(r=>(
+            <div key={r.date} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6}}>{fmtDate(r.date)}</div>
+              {r.me&&<div style={{background:"#EEF4FF",borderRadius:8,padding:"7px 10px",marginBottom:4}}><span style={{fontSize:10,color:"#3A5FCD",fontWeight:700}}>{names.me} · </span><span style={{fontSize:13}}>{r.me}</span></div>}
+              {r.you&&<div style={{background:"#FFF0F5",borderRadius:8,padding:"7px 10px"}}><span style={{fontSize:10,color:"#C2185B",fontWeight:700}}>{names.you} · </span><span style={{fontSize:13}}>{r.you}</span></div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:30,lineHeight:2}}>매일 감사한 마음을 기록해봐요 💌</div>}
+    </div>
+  );
+}
+
+// ════ OUR TAB ════
+function OurTab({names}) {
+  const [sub,setSub]=useState("anniversary");
+  const SUBS=[{id:"anniversary",label:"기념일",e:"📅"},{id:"bucket",label:"데이트신청",e:"💕"},{id:"gratitude",label:"감사메모",e:"💌"}];
+  return (
+    <div>
+      <div style={{background:C.bg,borderRadius:12,padding:3,marginBottom:14,display:"flex"}}>
+        {SUBS.map(s=>(
+          <button key={s.id} onClick={()=>setSub(s.id)} style={{flex:1,border:"none",borderRadius:10,padding:"8px 4px",cursor:"pointer",fontWeight:sub===s.id?700:500,fontSize:12,background:sub===s.id?C.card:"transparent",color:sub===s.id?C.primary:C.textMuted,boxShadow:sub===s.id?"0 1px 6px rgba(0,0,0,0.1)":"none",...base,transition:"all 0.15s"}}>
+            {s.e} {s.label}
+          </button>
+        ))}
+      </div>
+      {sub==="anniversary"&&<AnniversarySection/>}
+      {sub==="bucket"&&<BucketSection names={names}/>}
+      {sub==="gratitude"&&<GratitudeSection names={names}/>}
+    </div>
+  );
+}
+
+// ════ HOME TAB ════
+function HomeTab({onTabChange,names}) {
+  const [stats,setStats]=useState({dining:0,balance:0,catDone:0,fights:0,upcoming:null,pendingProposals:[]});
+
+  useEffect(()=>{
+    (async()=>{
+      const dining=await sGet("dining")||[];
+      const budget=await sGet("budget")||[];
+      const cats=await sGet("cats")||[];
+      const fights=await sGet("fights")||[];
+      const anniversaries=await sGet("anniversaries")||[];
+      const bucket=await sGet("bucket")||[];
+      const m=thisMonth();
+      const todayCat=cats.find(c=>c.date===todayStr());
+      const upcoming=anniversaries.map(a=>{
+        const today2=new Date(); today2.setHours(0,0,0,0);
+        const ty=today2.getFullYear();
+        const orig=new Date(a.date+"T12:00");
+        let next=new Date(ty,orig.getMonth(),orig.getDate());
+        if(next<today2) next=new Date(ty+1,orig.getMonth(),orig.getDate());
+        return {...a,dday:Math.round((next-today2)/86400000)};
+      }).sort((a,b)=>a.dday-b.dday)[0]||null;
+      const pendingProposals=bucket.filter(b=>b.status==="proposed");
+      setStats({
+        dining:dining.filter(d=>d.date.startsWith(m)).length,
+        balance:budget.reduce((s,r)=>s+(r.type==="income"?r.amount:-r.amount),0),
+        catDone:Object.keys(todayCat?.tasks||{}).length,
+        fights:fights.filter(f=>f.status==="ongoing").length,
+        upcoming,
+        pendingProposals,
+      });
+    })();
+  },[]);
+
+  const now=new Date(); const h=now.getHours();
+  const greeting=h<6?"야심한 밤이에요":h<12?"좋은 아침이에요":h<18?"좋은 오후에요":"좋은 저녁이에요";
+
+  return (
+    <div>
+      <div style={card({background:`linear-gradient(135deg,${C.primary},${C.secondary})`,color:"#fff",border:"none"})}>
+        <div style={{fontSize:11,opacity:0.8,marginBottom:3}}>{now.toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"})}</div>
+        <div style={{fontSize:22,fontWeight:800}}>{greeting} 💑</div>
+        <div style={{fontSize:13,opacity:0.85,marginTop:2}}>{names.me} & {names.you}, 오늘도 함께해요</div>
+      </div>
+
+      {stats.pendingProposals.length>0&&(
+        <div onClick={()=>onTabChange("our")} style={{background:"linear-gradient(135deg,#FFE9C5,#FFCB80)",borderRadius:14,padding:"12px 14px",marginBottom:12,border:`1.5px solid ${C.yellow}`,cursor:"pointer",boxShadow:"0 2px 10px rgba(255,183,77,0.3)"}}>
+          <div style={{...row(8,"center"),marginBottom:4}}>
+            <span style={{fontSize:20}}>🔔</span>
+            <div style={{fontSize:13,fontWeight:800,color:C.text}}>새 데이트 제안 {stats.pendingProposals.length}개</div>
+            <span style={{marginLeft:"auto",fontSize:11,color:C.textMuted,fontWeight:700}}>탭하여 확인 →</span>
+          </div>
+          <div style={{fontSize:12,color:C.text,marginLeft:28,fontWeight:600}}>
+            {stats.pendingProposals.slice(0,2).map(p=>{
+              const by=p.proposal?.by==="me"?names.me:names.you;
+              return `${by}→ ${p.title} (${fmtDate(p.proposal?.date)}${p.proposal?.time?` ${p.proposal.time}`:""})`;
+            }).join(" · ")}
+            {stats.pendingProposals.length>2&&` 외 ${stats.pendingProposals.length-2}개`}
+          </div>
+        </div>
+      )}
+
+      {stats.upcoming&&stats.upcoming.dday<=30&&(
+        <div onClick={()=>onTabChange("our")} style={card({background:stats.upcoming.dday===0?C.primaryLight:C.yellowLt,border:`1px solid ${stats.upcoming.dday===0?C.primary:C.yellow}`,cursor:"pointer"})}>
+          <div style={row(10)}>
+            <span style={{fontSize:24}}>{stats.upcoming.emoji}</span>
+            <div><div style={{fontWeight:700}}>{stats.upcoming.title}</div><div style={{fontSize:12,color:C.textMuted}}>{stats.upcoming.dday===0?"🎉 오늘이에요!":stats.upcoming.dday===1?"내일이에요! 🎊":`D-${stats.upcoming.dday}`}</div></div>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        {[
+          {label:"이번달 외식",value:`${stats.dining}회`,e:"🍽️",bg:"#FFF0EC",tab:"dining"},
+          {label:"현재 잔액",value:fmtMoney(Math.abs(stats.balance)),e:"💰",bg:stats.balance>=0?C.greenLt:C.redLt,tab:"budget"},
+          {label:"오늘 케어",value:`${stats.catDone}/3`,e:"🐱",bg:"#EEF7F5",tab:"cats"},
+          {label:"미해결 싸움",value:`${stats.fights}건`,e:"💬",bg:stats.fights>0?C.redLt:C.greenLt,tab:"fights"},
+        ].map(s=>(
+          <button key={s.tab} onClick={()=>onTabChange(s.tab)} style={{...card({background:s.bg,border:"none",margin:0,padding:14,cursor:"pointer"}),textAlign:"left"}}>
+            <div style={{fontSize:26,marginBottom:4}}>{s.e}</div>
+            <div style={{fontSize:17,fontWeight:800,letterSpacing:"-0.5px"}}>{s.value}</div>
+            <div style={{fontSize:11,color:C.textMuted}}>{s.label}</div>
+          </button>
+        ))}
+      </div>
+
+      <div onClick={()=>onTabChange("our")} style={card({background:C.yellowLt,border:`1px solid ${C.yellow}`,cursor:"pointer"})}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#B8860B"}}>❤️ 우리만의 공간</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          {[["📅","기념일"],["💕","데이트신청"],["💌","감사메모"]].map(([e,t])=>(
+            <div key={t} style={{background:C.card,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:22,marginBottom:4}}>{e}</div><div style={{fontSize:11,fontWeight:700}}>{t}</div></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════ SETTINGS ════
+function SettingsModal({names,onSave,onClose}) {
+  const [me,setMe]=useState(names.me);
+  const [you,setYou]=useState(names.you);
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:C.card,borderRadius:"20px 20px 0 0",padding:24,width:"100%",maxWidth:480}}>
+        <div style={{fontSize:16,fontWeight:800,marginBottom:16}}>👫 이름 설정</div>
+        <label style={lbl}>내 이름</label>
+        <input style={{...inp,marginBottom:12}} value={me} onChange={e=>setMe(e.target.value)} placeholder="나"/>
+        <label style={lbl}>상대방 이름</label>
+        <input style={{...inp,marginBottom:20}} value={you} onChange={e=>setYou(e.target.value)} placeholder="상대방"/>
+        <div style={row(10)}>
+          <button onClick={onClose} style={{...btn("#EEE",C.text),flex:1}}>취소</button>
+          <button onClick={()=>onSave(me||"나",you||"상대방")} style={{...btn(),flex:2}}>저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════ APP ════
+const TABS=[
+  {id:"home",label:"홈",e:"🏡"},
+  {id:"dining",label:"외식",e:"🍽️"},
+  {id:"cats",label:"냐옹이",e:"🐱"},
+  {id:"fights",label:"싸움",e:"💬"},
+  {id:"budget",label:"가계부",e:"💰"},
+  {id:"our",label:"우리",e:"❤️"},
+];
+
+const TITLES={home:"우리 부부 관리 💑",dining:"외식 기록 🍽️",cats:"냐옹이 케어 🐱",fights:"싸움 일지 💬",budget:"공용 가계부 💰",our:"우리만의 공간 ❤️"};
+
+function App() {
+  const [tab,setTab]=useState("home");
+  const [names,setNames]=useState({me:"나",you:"상대방"});
+  const [showSettings,setShowSettings]=useState(false);
+
+  useEffect(()=>{sGet("names").then(d=>d&&setNames(d));}, []);
+  const saveNames=async(me,you)=>{const n={me,you};await sSet("names",n);setNames(n);setShowSettings(false);};
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,...base,color:C.text,maxWidth:480,margin:"0 auto"}}>
+      <div style={{padding:"14px 16px 10px",background:C.card,borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,zIndex:10,...row(0,"center","space-between")}}>
+        <div style={{fontSize:14,fontWeight:800,letterSpacing:"-0.3px"}}>{TITLES[tab]}</div>
+        <button onClick={()=>setShowSettings(true)} style={{border:"none",background:C.bg,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,color:C.textMuted,...base}}>
+          👫 {names.me}&{names.you}
+        </button>
+      </div>
+
+      <div style={{padding:"12px 12px 90px"}}>
+        {tab==="home"&&<HomeTab onTabChange={setTab} names={names}/>}
+        {tab==="dining"&&<DiningTab names={names}/>}
+        {tab==="cats"&&<CatsTab names={names}/>}
+        {tab==="fights"&&<FightsTab names={names}/>}
+        {tab==="budget"&&<BudgetTab/>}
+        {tab==="our"&&<OurTab names={names}/>}
+      </div>
+
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`1.5px solid ${C.border}`,display:"flex",zIndex:20}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"none",padding:"8px 2px 6px",cursor:"pointer",color:tab===t.id?C.primary:C.textMuted,...base,display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"color 0.15s"}}>
+            <span style={{fontSize:tab===t.id?19:17,transition:"font-size 0.15s"}}>{t.e}</span>
+            <span style={{fontSize:9,fontWeight:tab===t.id?800:500}}>{t.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {showSettings&&<SettingsModal names={names} onSave={saveNames} onClose={()=>setShowSettings(false)}/>}
+    </div>
+  );
+}
+
+
+// ════ 커플 코드 입력 화면 ════
+function CodeEntry({ onSubmit }) {
+  const [code, setCode] = useState("");
+  const [mode, setMode] = useState("start"); // start | enter | create
+  const [generated, setGenerated] = useState("");
+
+  const generateCode = () => {
+    const adj = ["sweet","sunny","cozy","lovely","happy","cute","dreamy","starry"];
+    const noun = ["love","heart","moon","star","cloud","honey","kiss","hug"];
+    const num = Math.floor(Math.random()*9000+1000);
+    const g = adj[Math.floor(Math.random()*adj.length)] + "-" + noun[Math.floor(Math.random()*noun.length)] + "-" + num;
+    setGenerated(g);
+    setCode(g);
+    setMode("create");
+  };
+
+  return (
+    <div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#FFF5EE,#FAD4CB)"}}>
+      <div style={{fontSize:72,marginBottom:16}}>💕</div>
+      <div style={{fontSize:26,fontWeight:800,marginBottom:6,letterSpacing:"-0.5px",color:"#3D2C2C"}}>우리 둘이서</div>
+      <div style={{fontSize:13,color:"#9E7C7C",marginBottom:36,textAlign:"center",lineHeight:1.6}}>둘만의 커플 코드를 공유하면<br/>모든 기록이 자동으로 동기화돼요</div>
+
+      {mode==="start" && (
+        <div style={{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:10}}>
+          <button onClick={generateCode} style={{background:"#E8735A",color:"#fff",border:"none",borderRadius:14,padding:"16px",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(232,115,90,0.3)"}}>
+            ✨ 처음이에요 (새 코드 만들기)
+          </button>
+          <button onClick={()=>setMode("enter")} style={{background:"#fff",color:"#E8735A",border:"2px solid #E8735A",borderRadius:14,padding:"15px",fontSize:15,fontWeight:800,cursor:"pointer"}}>
+            🔑 코드 받았어요 (입력하기)
+          </button>
+        </div>
+      )}
+
+      {mode==="enter" && (
+        <div style={{width:"100%",maxWidth:320}}>
+          <label style={{fontSize:11,color:"#9E7C7C",fontWeight:700,letterSpacing:"0.3px",textTransform:"uppercase",marginBottom:6,display:"block"}}>커플 코드</label>
+          <input autoFocus value={code} onChange={e=>setCode(e.target.value.toLowerCase().replace(/\s+/g,"-"))} placeholder="예: sweet-honey-1234"
+                 style={{width:"100%",padding:"14px 16px",fontSize:15,border:"2px solid #F0DDD8",borderRadius:12,background:"#fff",outline:"none",marginBottom:10,fontFamily:"inherit"}}/>
+          <button onClick={()=>code.trim() && onSubmit(code.trim())} disabled={!code.trim()}
+                  style={{width:"100%",background:code.trim()?"#E8735A":"#ddd",color:"#fff",border:"none",borderRadius:14,padding:"15px",fontSize:15,fontWeight:800,cursor:code.trim()?"pointer":"not-allowed",marginBottom:8}}>
+            시작하기 💖
+          </button>
+          <button onClick={()=>{setMode("start");setCode("");}} style={{width:"100%",background:"none",border:"none",color:"#9E7C7C",fontSize:13,cursor:"pointer",padding:8}}>← 돌아가기</button>
+        </div>
+      )}
+
+      {mode==="create" && (
+        <div style={{width:"100%",maxWidth:320}}>
+          <div style={{background:"#fff",borderRadius:16,padding:20,marginBottom:12,textAlign:"center",border:"2px solid #E8735A",boxShadow:"0 4px 14px rgba(232,115,90,0.15)"}}>
+            <div style={{fontSize:11,color:"#9E7C7C",fontWeight:700,letterSpacing:"0.5px",marginBottom:8}}>당신의 커플 코드</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#E8735A",letterSpacing:"0.5px",marginBottom:10,wordBreak:"break-all"}}>{generated}</div>
+            <button onClick={()=>{navigator.clipboard?.writeText(generated);alert("코드가 복사됐어요! 💌");}}
+                    style={{background:"#FAD4CB",color:"#E8735A",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              📋 코드 복사하기
+            </button>
+          </div>
+          <div style={{fontSize:12,color:"#9E7C7C",textAlign:"center",lineHeight:1.6,marginBottom:16,padding:"0 8px"}}>
+            이 코드를 상대방에게 보내고<br/>같은 코드로 접속하면 둘이 함께 쓸 수 있어요!
+          </div>
+          <button onClick={()=>onSubmit(generated)}
+                  style={{width:"100%",background:"#E8735A",color:"#fff",border:"none",borderRadius:14,padding:"15px",fontSize:15,fontWeight:800,cursor:"pointer",marginBottom:8}}>
+            시작하기 💖
+          </button>
+          <button onClick={()=>{setMode("start");setGenerated("");setCode("");}} style={{width:"100%",background:"none",border:"none",color:"#9E7C7C",fontSize:13,cursor:"pointer",padding:8}}>← 다시 만들기</button>
+        </div>
+      )}
+
+      <div style={{marginTop:40,fontSize:10,color:"#C8B8B8"}}>Powered by Firebase ⚡</div>
+    </div>
+  );
+}
+
+function Root() {
+  const [code, setCode] = useState(coupleCode);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (code) {
+      // Test connection
+      window.db.collection("couples").doc(code).set({lastSeen: Date.now()}, {merge: true})
+        .then(() => setReady(true))
+        .catch(e => { console.error(e); alert("연결 실패: Firebase 설정을 확인하세요"); });
+    }
+  }, [code]);
+
+  if (!code) {
+    return <CodeEntry onSubmit={(c) => {
+      coupleCode = c;
+      localStorage.setItem("coupleCode", c);
+      setCode(c);
+    }} />;
+  }
+
+  if (!ready) {
+    return (
+      <div className="splash">
+        <div className="e">💕</div>
+        <div>연결 중...</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <App />
+      <div style={{position:"fixed",bottom:90,right:10,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"4px 8px",fontSize:9,color:"#9E7C7C",boxShadow:"0 2px 6px rgba(0,0,0,0.08)",zIndex:5,fontFamily:"'Apple SD Gothic Neo',sans-serif"}}>
+        🔗 {code}
+        <button onClick={()=>{
+          if(confirm("로그아웃하시겠어요?\n(데이터는 보존되며 같은 코드로 다시 접속 가능합니다)")){
+            localStorage.removeItem("coupleCode");
+            location.reload();
+          }
+        }} style={{marginLeft:6,background:"none",border:"none",color:"#9E7C7C",cursor:"pointer",fontSize:11,padding:0}}>×</button>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
+  </script>
+</body>
+</html>
