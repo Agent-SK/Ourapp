@@ -30,13 +30,14 @@
     // ⚠️ ⚠️ ⚠️  여기에 본인의 Firebase 설정을 붙여넣으세요  ⚠️ ⚠️ ⚠️
     // README.md 의 "Firebase 설정" 단계 참고
     const firebaseConfig = {
-      apiKey: "AIzaSyDyM6qnMj1CjElNajKMWFd--2pcRydfOj4",
-      authDomain: "uriuri-38f6f.firebaseapp.com",
-      projectId: "uriuri-38f6f",
-      storageBucket: "uriuri-38f6f.firebasestorage.app",
-      messagingSenderId: "581002051198",
-      appId: "1:581002051198:web:7059c93335b7a1e58ca22f"
+      apiKey: "YOUR_API_KEY_HERE",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:xxxxxxxxxxxx"
     };
+
     try {
       firebase.initializeApp(firebaseConfig);
       window.db = firebase.firestore();
@@ -872,7 +873,7 @@ function FightsTab({names}) {
       <div style={card({background:"#FFF5F5"})}>
         <div style={row(0,"center","space-between")}>
           <div>
-            <div style={{fontSize:11,color:C.textMuted,marginBottom:4}}>싸움 일지</div>
+            <div style={{fontSize:11,color:C.textMuted,marginBottom:4}}>대화신청 일지</div>
             <div style={row(16)}>
               <div><span style={{fontSize:24,fontWeight:800,color:C.red}}>{ongoing.length}</span><span style={{fontSize:12,color:C.textMuted}}> 진행중</span></div>
               <div><span style={{fontSize:24,fontWeight:800,color:C.sage}}>{resolved.length}</span><span style={{fontSize:12,color:C.textMuted}}> 해결</span></div>
@@ -881,12 +882,12 @@ function FightsTab({names}) {
           <div style={{fontSize:48}}>💬</div>
         </div>
         <div style={{fontSize:12,color:C.textMuted,marginTop:8,background:"#fff",borderRadius:8,padding:"6px 10px"}}>
-          💡 카드를 펼쳐 각자 자신의 입장을 직접 편집해보세요
+          💡 진솔한 대화가 필요할 때, 각자의 입장을 정리해보세요
         </div>
       </div>
 
       <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
-        {showForm?"✕ 닫기":"+ 싸움 기록하기"}
+        {showForm?"✕ 닫기":"+ 대화신청 기록하기"}
       </button>
 
       {showForm&&(
@@ -894,16 +895,16 @@ function FightsTab({names}) {
           <label style={lbl}>날짜</label>
           <input style={{...inp,marginBottom:10}} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
           <label style={lbl}>한 줄 요약 *</label>
-          <input style={{...inp,marginBottom:14}} placeholder="예: 집안일 분담 문제로 싸움" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+          <input style={{...inp,marginBottom:14}} placeholder="예: 집안일 분담 이야기 나누기" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
           <SideInput side="me" label={`💙 ${names.me}의 입장`} color="#EEF4FF" nameColor="#3A5FCD"/>
           <SideInput side="you" label={`🩷 ${names.you}의 입장`} color="#FFF0F5" nameColor="#C2185B"/>
           <button onClick={add} style={{...btn(),width:"100%",marginTop:4}}>저장하기</button>
         </div>
       )}
 
-      {ongoing.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.red,marginBottom:8}}>🔴 진행중인 싸움</div>{ongoing.map(r=><FightCard key={r.id} r={r}/>)}</>}
-      {resolved.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.sage,marginBottom:8,marginTop:8}}>✅ 해결된 싸움</div>{resolved.map(r=><FightCard key={r.id} r={r}/>)}</>}
-      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40,lineHeight:2}}>기록된 싸움이 없어요 💕<br/>사이좋게 지내고 있군요!</div>}
+      {ongoing.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.red,marginBottom:8}}>🔴 진행중인 대화신청</div>{ongoing.map(r=><FightCard key={r.id} r={r}/>)}</>}
+      {resolved.length>0&&<><div style={{fontSize:13,fontWeight:700,color:C.sage,marginBottom:8,marginTop:8}}>✅ 해결된 대화신청</div>{resolved.map(r=><FightCard key={r.id} r={r}/>)}</>}
+      {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40,lineHeight:2}}>기록된 대화신청이 없어요 💕<br/>사이좋게 지내고 있군요!</div>}
 
       {editModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
@@ -1017,10 +1018,10 @@ function AnniversarySection() {
 }
 
 // ════ BUCKET CALENDAR ════
-function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
+function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete,onDelete}) {
   const [viewDate,setViewDate]=useState(new Date());
   const [pickDay,setPickDay]=useState(null);
-  const [form,setForm]=useState({existingId:"",title:"",time:"19:00",memo:"",by:"me"});
+  const [form,setForm]=useState({existingId:"",title:"",time:"19:00",memo:"",by:"me",eventType:"date"});
 
   const y=viewDate.getFullYear(), m=viewDate.getMonth();
   const firstDay=new Date(y,m,1).getDay();
@@ -1045,19 +1046,19 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
   });
 
   const dk=d=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-  const wishItems=items.filter(i=>i.status==="wish");
+  const wishItems=items.filter(i=>i.status==="wish"&&i.eventType!=="personal");
   const dayItemsForPick=pickDay?(dateItems[pickDay]||[]):[];
 
   const openDay=key=>{
     setPickDay(key);
-    setForm({existingId:"",title:"",time:"19:00",memo:"",by:"me"});
+    setForm({existingId:"",title:"",time:"19:00",memo:"",by:"me",eventType:"date"});
   };
 
   const handleSubmit=()=>{
     if(!pickDay) return;
     const title=form.existingId?null:form.title.trim();
     if(!form.existingId&&!title) return;
-    onPropose({itemId:form.existingId||null,title,date:pickDay,time:form.time,memo:form.memo,by:form.by});
+    onPropose({itemId:form.existingId||null,title,date:pickDay,time:form.time,memo:form.memo,by:form.by,eventType:form.eventType});
     setPickDay(null);
   };
 
@@ -1079,28 +1080,30 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
             if(!d) return <div key={di}/>;
             const key=dk(d);
             const dayItems=dateItems[key]||[];
-            const hasProposed=dayItems.some(i=>i.status==="proposed");
-            const hasAccepted=dayItems.some(i=>i.status==="accepted");
+            const hasPersonal=dayItems.some(i=>i.eventType==="personal");
+            const hasProposed=dayItems.some(i=>i.status==="proposed"&&i.eventType!=="personal");
+            const hasAccepted=dayItems.some(i=>i.status==="accepted"&&i.eventType!=="personal");
             const isToday=key===todayStr();
             const bgGrad=hasAccepted?"linear-gradient(135deg,#A5D6A7,#6FAB9A)"
                        :hasProposed?"linear-gradient(135deg,#FFE082,#FFB74D)"
+                       :hasPersonal?"linear-gradient(135deg,#D1C4E9,#9575CD)"
                        :isToday?C.primaryLight:C.bg;
-            const txt=(hasAccepted||hasProposed)?"#fff":(di===0?"#E57373":di===6?"#64B5F6":C.text);
+            const txt=(hasAccepted||hasProposed||hasPersonal)?"#fff":(di===0?"#E57373":di===6?"#64B5F6":C.text);
+            const icon=hasAccepted?"💝":hasProposed?"💭":hasPersonal?"📌":null;
             return (
-              <button key={di} onClick={()=>openDay(key)} style={{aspectRatio:"1",border:isToday?`1.5px solid ${C.primary}`:`1px solid ${hasAccepted||hasProposed?"transparent":C.border}`,borderRadius:8,background:bgGrad,cursor:"pointer",padding:2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",position:"relative",overflow:"hidden",boxShadow:(hasAccepted||hasProposed)?"0 1px 3px rgba(0,0,0,0.12)":"none",...base}}>
-                <div style={{fontSize:11,fontWeight:isToday||hasProposed||hasAccepted?800:500,color:txt,lineHeight:1.1}}>{d}</div>
-                {hasAccepted&&<div style={{fontSize:13,marginTop:1,lineHeight:1}}>💝</div>}
-                {!hasAccepted&&hasProposed&&<div style={{fontSize:13,marginTop:1,lineHeight:1}}>💭</div>}
+              <button key={di} onClick={()=>openDay(key)} style={{aspectRatio:"1",border:isToday?`1.5px solid ${C.primary}`:`1px solid ${hasAccepted||hasProposed||hasPersonal?"transparent":C.border}`,borderRadius:8,background:bgGrad,cursor:"pointer",padding:2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",position:"relative",overflow:"hidden",boxShadow:(hasAccepted||hasProposed||hasPersonal)?"0 1px 3px rgba(0,0,0,0.12)":"none",...base}}>
+                <div style={{fontSize:11,fontWeight:isToday||hasProposed||hasAccepted||hasPersonal?800:500,color:txt,lineHeight:1.1}}>{d}</div>
+                {icon&&<div style={{fontSize:13,marginTop:1,lineHeight:1}}>{icon}</div>}
                 {dayItems.length>1&&<div style={{position:"absolute",top:1,right:2,fontSize:8,background:"rgba(255,255,255,0.85)",borderRadius:4,padding:"0 3px",color:C.text,fontWeight:800,lineHeight:1.2}}>+{dayItems.length-1}</div>}
               </button>
             );
           })}
         </div>
       ))}
-      <div style={{...row(14,"center"),marginTop:10,paddingTop:8,borderTop:`1px solid ${C.border}`,flexWrap:"wrap"}}>
-        <div style={row(4)}><div style={{width:14,height:14,borderRadius:3,background:"linear-gradient(135deg,#FFE082,#FFB74D)"}}/><span style={{fontSize:11,color:C.textMuted,fontWeight:600}}>💭 제안중</span></div>
-        <div style={row(4)}><div style={{width:14,height:14,borderRadius:3,background:"linear-gradient(135deg,#A5D6A7,#6FAB9A)"}}/><span style={{fontSize:11,color:C.textMuted,fontWeight:600}}>💝 확정</span></div>
-        <span style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>· 날짜 탭으로 제안</span>
+      <div style={{...row(10,"center"),marginTop:10,paddingTop:8,borderTop:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+        <div style={row(4)}><div style={{width:13,height:13,borderRadius:3,background:"linear-gradient(135deg,#FFE082,#FFB74D)"}}/><span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>💭 제안중</span></div>
+        <div style={row(4)}><div style={{width:13,height:13,borderRadius:3,background:"linear-gradient(135deg,#A5D6A7,#6FAB9A)"}}/><span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>💝 확정</span></div>
+        <div style={row(4)}><div style={{width:13,height:13,borderRadius:3,background:"linear-gradient(135deg,#D1C4E9,#9575CD)"}}/><span style={{fontSize:10,color:C.textMuted,fontWeight:600}}>📌 개인</span></div>
       </div>
 
       {pickDay&&(
@@ -1115,30 +1118,41 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6,letterSpacing:"0.3px"}}>이 날 예정</div>
                 {dayItemsForPick.map(it=>{
+                  const isPersonal=it.eventType==="personal";
                   const byName=it.proposal?.by==="me"?names.me:names.you;
                   const otherName=it.proposal?.by==="me"?names.you:names.me;
+                  const bg=isPersonal?"linear-gradient(135deg,#F3E5F5,#E1BEE7)"
+                         :it.status==="accepted"?"linear-gradient(135deg,#EDFAF3,#D4EBE6)"
+                         :"linear-gradient(135deg,#FFFAED,#FFE9C5)";
+                  const border=isPersonal?"#CE93D8":it.status==="accepted"?C.sageLt:C.yellow;
                   return (
-                    <div key={it.id} style={{background:it.status==="accepted"?"linear-gradient(135deg,#EDFAF3,#D4EBE6)":"linear-gradient(135deg,#FFFAED,#FFE9C5)",borderRadius:12,padding:11,marginBottom:6,border:`1px solid ${it.status==="accepted"?C.sageLt:C.yellow}`}}>
+                    <div key={it.id} style={{background:bg,borderRadius:12,padding:11,marginBottom:6,border:`1px solid ${border}`}}>
                       <div style={{...row(6,"flex-start","space-between"),marginBottom:6}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:800,fontSize:14,marginBottom:3}}>{it.title}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{...row(5,"center"),flexWrap:"wrap",marginBottom:3}}>
+                            <span style={chip(isPersonal?"#9575CD":C.primary,"#fff")}>{isPersonal?"📌 개인":"💑 데이트"}</span>
+                            <span style={{fontWeight:800,fontSize:14}}>{it.title}</span>
+                          </div>
                           <div style={{...row(8),flexWrap:"wrap"}}>
                             {it.proposal?.time&&<span style={{fontSize:12,color:C.text,fontWeight:600}}>🕐 {it.proposal.time}</span>}
-                            <span style={{fontSize:11,color:C.textMuted}}>{it.proposal?.by==="me"?"💙":"🩷"} {byName} 제안</span>
+                            <span style={{fontSize:11,color:C.textMuted}}>{it.proposal?.by==="me"?"💙":"🩷"} {byName}{isPersonal?"":" 제안"}</span>
                           </div>
                           {it.proposal?.memo&&<div style={{fontSize:12,color:C.textMuted,marginTop:4,padding:"4px 6px",background:"rgba(255,255,255,0.5)",borderRadius:5}}>💬 {it.proposal.memo}</div>}
                         </div>
-                        <span style={chip(it.status==="accepted"?C.sage:C.yellow,"#fff")}>{it.status==="accepted"?"✅ 확정":"⏳ 대기"}</span>
+                        {!isPersonal&&<span style={chip(it.status==="accepted"?C.sage:C.yellow,"#fff")}>{it.status==="accepted"?"✅ 확정":"⏳ 대기"}</span>}
                       </div>
-                      {it.status==="proposed"&&(
-                        <div style={{...row(6),marginTop:6}}>
-                          <button onClick={()=>{onAccept(it.id);setPickDay(null);}} style={{...btn(C.sage),flex:2,fontSize:13,padding:"9px 10px"}}>✅ {otherName}가 수락</button>
-                          <button onClick={()=>{onReject(it.id);setPickDay(null);}} style={{...btn("#DDD",C.text),flex:1,fontSize:13,padding:"9px 10px"}}>거절</button>
-                        </div>
-                      )}
-                      {it.status==="accepted"&&(
-                        <button onClick={()=>{onComplete(it.id);setPickDay(null);}} style={{...btn(C.primary),width:"100%",marginTop:6,fontSize:13,padding:"9px 10px"}}>🎉 다녀왔어요!</button>
-                      )}
+                      <div style={{...row(6),flexWrap:"wrap",marginTop:6}}>
+                        {!isPersonal&&it.status==="proposed"&&(
+                          <>
+                            <button onClick={()=>{onAccept(it.id);setPickDay(null);}} style={{...btn(C.sage),flex:2,fontSize:13,padding:"9px 10px"}}>✅ {otherName}가 수락</button>
+                            <button onClick={()=>{onReject(it.id);setPickDay(null);}} style={{...btn("#DDD",C.text),flex:1,fontSize:13,padding:"9px 10px"}}>거절</button>
+                          </>
+                        )}
+                        {!isPersonal&&it.status==="accepted"&&(
+                          <button onClick={()=>{onComplete(it.id);setPickDay(null);}} style={{...btn(C.primary),flex:1,fontSize:13,padding:"9px 10px"}}>🎉 다녀왔어요!</button>
+                        )}
+                        <button onClick={()=>{onDelete(it.id);setPickDay(null);}} style={{...btn("#FFEBEE",C.red),fontSize:12,padding:"9px 12px",marginLeft:isPersonal?"auto":0}}>🗑 삭제</button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1146,9 +1160,16 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
             )}
 
             <div style={{padding:14,background:C.bg,borderRadius:14,border:`1px solid ${C.border}`}}>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:10,color:C.primary}}>💌 이 날 데이트 제안하기</div>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:10,color:C.primary}}>💌 이 날 새 일정 추가</div>
 
-              {wishItems.length>0&&(
+              <label style={lbl}>유형</label>
+              <div style={{...row(6),marginBottom:10}}>
+                {[["date","💑 데이트 제안"],["personal","📌 개인 일정"]].map(([k,l])=>(
+                  <button key={k} onClick={()=>setForm({...form,eventType:k,existingId:""})} style={{flex:1,padding:"9px 4px",border:`2px solid ${form.eventType===k?C.primary:C.border}`,background:form.eventType===k?C.primaryLight:C.card,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:form.eventType===k?800:600,color:C.text,...base}}>{l}</button>
+                ))}
+              </div>
+
+              {form.eventType==="date"&&wishItems.length>0&&(
                 <div style={{marginBottom:10}}>
                   <label style={lbl}>찜 목록에서 선택</label>
                   <select style={{...inp,background:C.card}} value={form.existingId} onChange={e=>setForm({...form,existingId:e.target.value,title:""})}>
@@ -1162,8 +1183,8 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
 
               {!form.existingId&&(
                 <div style={{marginBottom:10}}>
-                  <label style={lbl}>뭐 하고 싶어요?</label>
-                  <input style={{...inp,background:C.card}} placeholder="예: 한강 자전거, 영화관 데이트..." value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+                  <label style={lbl}>{form.eventType==="personal"?"일정 내용":"뭐 하고 싶어요?"}</label>
+                  <input style={{...inp,background:C.card}} placeholder={form.eventType==="personal"?"예: 친구 결혼식, 회식...":"예: 한강 자전거, 영화관 데이트..."} value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
                 </div>
               )}
 
@@ -1173,7 +1194,7 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
                   <input style={{...inp,background:C.card}} type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})}/>
                 </div>
                 <div style={{flex:1.2}}>
-                  <label style={lbl}>제안하는 사람</label>
+                  <label style={lbl}>{form.eventType==="personal"?"누구의 일정":"제안하는 사람"}</label>
                   <div style={row(4)}>
                     {[["me",names.me,"💙"],["you",names.you,"🩷"]].map(([k,n,e])=>(
                       <button key={k} onClick={()=>setForm({...form,by:k})} style={{flex:1,padding:"9px 4px",border:`1.5px solid ${form.by===k?C.primary:C.border}`,background:form.by===k?C.primaryLight:C.card,borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:form.by===k?800:600,color:C.text,...base}}>{e} {n}</button>
@@ -1187,7 +1208,9 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
                 <input style={{...inp,background:C.card}} placeholder="예: 예약 미리 해야 해" value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
               </div>
 
-              <button onClick={handleSubmit} disabled={!form.existingId&&!form.title.trim()} style={{...btn(),width:"100%",fontSize:14,opacity:(!form.existingId&&!form.title.trim())?0.5:1,cursor:(!form.existingId&&!form.title.trim())?"not-allowed":"pointer"}}>💌 {form.by==="me"?names.you:names.me}에게 제안 보내기</button>
+              <button onClick={handleSubmit} disabled={!form.existingId&&!form.title.trim()} style={{...btn(),width:"100%",fontSize:14,opacity:(!form.existingId&&!form.title.trim())?0.5:1,cursor:(!form.existingId&&!form.title.trim())?"not-allowed":"pointer"}}>
+                {form.eventType==="personal"?"📌 개인 일정 등록":`💌 ${form.by==="me"?names.you:names.me}에게 제안 보내기`}
+              </button>
             </div>
           </div>
         </div>
@@ -1196,22 +1219,51 @@ function BucketCalendar({items,names,onPropose,onAccept,onReject,onComplete}) {
   );
 }
 
+
 // ════ BUCKET LIST ════
 function BucketSection({names}) {
   const [items,setItems]=useState([]);
   const [showForm,setShowForm]=useState(false);
-  const [form,setForm]=useState({title:"",addedBy:"me",memo:""});
+  const [form,setForm]=useState({title:"",addedBy:"me",memo:"",eventType:"date"});
   const [proposing,setProposing]=useState(null);
   const [propForm,setPropForm]=useState({date:todayStr(),time:"19:00",memo:"",by:"me"});
   const [view,setView]=useState("calendar");
+  const [filter,setFilter]=useState("all"); // all | date | personal
 
-  useEffect(()=>{sGet("bucket").then(d=>setItems(d||[]));}, []);
+  useEffect(()=>{sGet("bucket").then(d=>{
+    // Migrate: items without eventType become "date"
+    const migrated=(d||[]).map(it=>({...it,eventType:it.eventType||"date"}));
+    setItems(migrated);
+  });}, []);
   const saveAll=async d=>{await sSet("bucket",d);setItems(d);};
 
   const add=async()=>{
     if(!form.title.trim()) return;
+    // Personal items skip the wish→propose flow; go straight to scheduled
+    if(form.eventType==="personal"){
+      setProposing("__new__");
+      setPropForm({date:todayStr(),time:"19:00",memo:form.memo,by:form.addedBy});
+      return;
+    }
     await saveAll([...items,{...form,id:Date.now(),status:"wish",proposal:null,confirmedDate:null}]);
-    setForm({title:"",addedBy:"me",memo:""});
+    setForm({title:"",addedBy:"me",memo:"",eventType:"date"});
+    setShowForm(false);
+  };
+
+  const addPersonalScheduled=async()=>{
+    if(!form.title.trim()) return;
+    await saveAll([...items,{
+      id:Date.now(),
+      title:form.title,
+      memo:form.memo,
+      addedBy:form.addedBy,
+      eventType:"personal",
+      status:"accepted", // personal events are immediately confirmed
+      proposal:{date:propForm.date,time:propForm.time,memo:propForm.memo,by:form.addedBy},
+      confirmedDate:propForm.date,
+    }]);
+    setForm({title:"",addedBy:"me",memo:"",eventType:"date"});
+    setProposing(null);
     setShowForm(false);
   };
 
@@ -1220,91 +1272,118 @@ function BucketSection({names}) {
     setProposing(null);
   };
 
-  // Used by calendar — either propose an existing item or create new one in proposed state
-  const proposeFromCal=async({itemId,title,date,time,memo,by})=>{
+  // Calendar quick-add
+  const proposeFromCal=async({itemId,title,date,time,memo,by,eventType="date"})=>{
     if(itemId){
       const id=Number(itemId);
       await saveAll(items.map(it=>it.id===id?{...it,status:"proposed",proposal:{date,time,memo,by}}:it));
     } else if(title){
-      await saveAll([...items,{id:Date.now(),title,memo:"",addedBy:by,status:"proposed",proposal:{date,time,memo,by},confirmedDate:null}]);
+      const isPersonal=eventType==="personal";
+      await saveAll([...items,{
+        id:Date.now(),
+        title,
+        memo:"",
+        addedBy:by,
+        eventType,
+        status:isPersonal?"accepted":"proposed",
+        proposal:{date,time,memo,by},
+        confirmedDate:isPersonal?date:null,
+      }]);
     }
   };
+
   const accept=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"accepted",confirmedDate:it.proposal?.date}:it));};
   const reject=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"wish",proposal:null}:it));};
   const complete=async id=>{await saveAll(items.map(it=>it.id===id?{...it,status:"done"}:it));};
+  const remove=async id=>{
+    if(!confirm("이 항목을 삭제할까요?")) return;
+    await saveAll(items.filter(x=>x.id!==id));
+  };
 
   const statusColors={wish:C.bg,proposed:C.yellowLt,accepted:C.sageLt,done:"#F5F5F5"};
-  const statusLabels={wish:"💭 찜",proposed:"⏳ 제안 대기중",accepted:"✅ 날짜 확정!",done:"🎉 완료!"};
+  const statusLabels={wish:"💭 찜",proposed:"⏳ 제안 대기중",accepted:"✅ 확정!",done:"🎉 완료!"};
 
-  const ItemCard=({it})=>(
-    <div style={{background:statusColors[it.status],borderRadius:12,padding:12,marginBottom:8,border:`1px solid ${it.status==="accepted"?C.sageLt:it.status==="proposed"?C.yellow:C.border}`}}>
-      <div style={row(0,"flex-start","space-between")}>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:14,textDecoration:it.status==="done"?"line-through":"none",color:it.status==="done"?C.textMuted:C.text,marginBottom:4}}>{it.title}</div>
-          {it.memo&&<div style={{fontSize:12,color:C.textMuted,marginBottom:4}}>{it.memo}</div>}
-          <div style={{...row(5),flexWrap:"wrap"}}>
-            <span style={chip(it.status==="proposed"?C.yellow:it.status==="accepted"?C.sageLt:it.status==="done"?"#DDD":C.primaryLight)}>{statusLabels[it.status]}</span>
-            {(it.status==="proposed"||it.status==="accepted")&&it.proposal?.date&&(
-              <span style={chip(C.yellowLt)}>📅 {fmtDate(it.proposal.date)}{it.proposal?.time?` 🕐${it.proposal.time}`:""}</span>
-            )}
-            {it.proposal?.by&&(it.status==="proposed"||it.status==="accepted")&&(
-              <span style={{fontSize:10,color:C.textMuted}}>{it.proposal.by==="me"?"💙":"🩷"} {it.proposal.by==="me"?names.me:names.you} 제안</span>
-            )}
-          </div>
-          {it.proposal?.memo&&(it.status==="proposed"||it.status==="accepted")&&<div style={{fontSize:11,color:C.textMuted,marginTop:4,padding:"3px 6px",background:"rgba(255,255,255,0.5)",borderRadius:5,fontStyle:"italic"}}>💬 {it.proposal.memo}</div>}
-        </div>
-        <button onClick={()=>saveAll(items.filter(x=>x.id!==it.id))} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:16,padding:0,flexShrink:0}}>×</button>
-      </div>
-
-      <div style={{...row(6),marginTop:8,flexWrap:"wrap"}}>
-        {it.status==="wish"&&(
-          <button onClick={()=>{setProposing(it.id);setPropForm({date:todayStr(),time:"19:00",memo:"",by:it.addedBy||"me"});}} style={{...btn(C.yellow,C.text),fontSize:12,padding:"7px 12px"}}>📅 날짜 제안하기</button>
-        )}
-        {it.status==="proposed"&&(
-          <>
-            <button onClick={()=>accept(it.id)} style={{...btn(C.sage),fontSize:12,padding:"7px 12px"}}>✅ 수락!</button>
-            <button onClick={()=>reject(it.id)} style={{...btn("#DDD",C.text),fontSize:12,padding:"7px 12px"}}>❌ 거절</button>
-          </>
-        )}
-        {it.status==="accepted"&&(
-          <button onClick={()=>complete(it.id)} style={{...btn(C.primary),fontSize:12,padding:"7px 12px"}}>🎉 다녀왔어요!</button>
-        )}
-        {it.status==="done"&&(
-          <button onClick={()=>saveAll(items.map(x=>x.id===it.id?{...x,status:"wish",proposal:null,confirmedDate:null}:x))} style={{...btn("#EEE",C.text),fontSize:12,padding:"7px 12px"}}>↩️ 되돌리기</button>
-        )}
-      </div>
-
-      {proposing===it.id&&(
-        <div style={{marginTop:10,padding:12,background:C.card,borderRadius:10,border:`1px solid ${C.border}`}}>
-          <div style={{...row(8),marginBottom:10}}>
-            <div style={{flex:1.4}}>
-              <label style={lbl}>날짜</label>
-              <input style={inp} type="date" value={propForm.date} onChange={e=>setPropForm({...propForm,date:e.target.value})}/>
+  const ItemCard=({it})=>{
+    const isPersonal=it.eventType==="personal";
+    return (
+      <div style={{background:isPersonal?"#F3F0FF":statusColors[it.status],borderRadius:12,padding:12,marginBottom:8,border:`1px solid ${isPersonal?"#D4C5FF":(it.status==="accepted"?C.sageLt:it.status==="proposed"?C.yellow:C.border)}`}}>
+        <div style={row(0,"flex-start","space-between")}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{...row(6,"center"),flexWrap:"wrap",marginBottom:4}}>
+              <span style={chip(isPersonal?"#9575CD":C.primary,"#fff")}>{isPersonal?"📌 개인":"💑 데이트"}</span>
+              <span style={{fontWeight:700,fontSize:14,textDecoration:it.status==="done"?"line-through":"none",color:it.status==="done"?C.textMuted:C.text}}>{it.title}</span>
             </div>
-            <div style={{flex:1}}>
-              <label style={lbl}>🕐 시간</label>
-              <input style={inp} type="time" value={propForm.time} onChange={e=>setPropForm({...propForm,time:e.target.value})}/>
+            {it.memo&&<div style={{fontSize:12,color:C.textMuted,marginBottom:4}}>{it.memo}</div>}
+            <div style={{...row(5),flexWrap:"wrap"}}>
+              {!isPersonal&&<span style={chip(it.status==="proposed"?C.yellow:it.status==="accepted"?C.sageLt:it.status==="done"?"#DDD":C.primaryLight)}>{statusLabels[it.status]}</span>}
+              {(it.status==="proposed"||it.status==="accepted")&&it.proposal?.date&&(
+                <span style={chip(isPersonal?"#E8DEF8":C.yellowLt)}>📅 {fmtDate(it.proposal.date)}{it.proposal?.time?` 🕐${it.proposal.time}`:""}</span>
+              )}
+              {it.proposal?.by&&(it.status==="proposed"||it.status==="accepted")&&(
+                <span style={{fontSize:10,color:C.textMuted}}>{it.proposal.by==="me"?"💙":"🩷"} {it.proposal.by==="me"?names.me:names.you}{isPersonal?"":" 제안"}</span>
+              )}
             </div>
-          </div>
-          <label style={lbl}>제안하는 사람</label>
-          <div style={{...row(6),marginBottom:8}}>
-            {[["me",names.me,"💙"],["you",names.you,"🩷"]].map(([k,n,em])=>(
-              <button key={k} onClick={()=>setPropForm({...propForm,by:k})} style={{flex:1,padding:"8px 4px",border:`1.5px solid ${propForm.by===k?C.primary:C.border}`,background:propForm.by===k?C.primaryLight:C.bg,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:propForm.by===k?800:600,color:C.text,...base}}>{em} {n}</button>
-            ))}
-          </div>
-          <input style={{...inp,marginBottom:8}} placeholder="메모 (선택)" value={propForm.memo} onChange={e=>setPropForm({...propForm,memo:e.target.value})}/>
-          <div style={row(8)}>
-            <button onClick={()=>setProposing(null)} style={{...btn("#EEE",C.text),flex:1,fontSize:13}}>취소</button>
-            <button onClick={()=>propose(it.id)} style={{...btn(),flex:2,fontSize:13}}>💌 제안하기</button>
+            {it.proposal?.memo&&(it.status==="proposed"||it.status==="accepted")&&<div style={{fontSize:11,color:C.textMuted,marginTop:4,padding:"3px 6px",background:"rgba(255,255,255,0.5)",borderRadius:5,fontStyle:"italic"}}>💬 {it.proposal.memo}</div>}
           </div>
         </div>
-      )}
-    </div>
-  );
 
-  const meItems=items.filter(it=>it.addedBy==="me");
-  const youItems=items.filter(it=>it.addedBy==="you");
-  const pendingProposals=items.filter(it=>it.status==="proposed");
+        <div style={{...row(6),marginTop:10,flexWrap:"wrap"}}>
+          {!isPersonal&&it.status==="wish"&&(
+            <button onClick={()=>{setProposing(it.id);setPropForm({date:todayStr(),time:"19:00",memo:"",by:it.addedBy||"me"});}} style={{...btn(C.yellow,C.text),fontSize:12,padding:"7px 12px"}}>📅 날짜 제안하기</button>
+          )}
+          {!isPersonal&&it.status==="proposed"&&(
+            <>
+              <button onClick={()=>accept(it.id)} style={{...btn(C.sage),fontSize:12,padding:"7px 12px"}}>✅ 수락!</button>
+              <button onClick={()=>reject(it.id)} style={{...btn("#DDD",C.text),fontSize:12,padding:"7px 12px"}}>❌ 거절</button>
+            </>
+          )}
+          {!isPersonal&&it.status==="accepted"&&(
+            <button onClick={()=>complete(it.id)} style={{...btn(C.primary),fontSize:12,padding:"7px 12px"}}>🎉 다녀왔어요!</button>
+          )}
+          {!isPersonal&&it.status==="done"&&(
+            <button onClick={()=>saveAll(items.map(x=>x.id===it.id?{...x,status:"wish",proposal:null,confirmedDate:null}:x))} style={{...btn("#EEE",C.text),fontSize:12,padding:"7px 12px"}}>↩️ 되돌리기</button>
+          )}
+          <button onClick={()=>remove(it.id)} style={{...btn("#FFEBEE",C.red),fontSize:12,padding:"7px 12px",marginLeft:"auto"}}>🗑 삭제</button>
+        </div>
+
+        {proposing===it.id&&(
+          <div style={{marginTop:10,padding:12,background:C.card,borderRadius:10,border:`1px solid ${C.border}`}}>
+            <div style={{...row(8),marginBottom:10}}>
+              <div style={{flex:1.4}}>
+                <label style={lbl}>날짜</label>
+                <input style={inp} type="date" value={propForm.date} onChange={e=>setPropForm({...propForm,date:e.target.value})}/>
+              </div>
+              <div style={{flex:1}}>
+                <label style={lbl}>🕐 시간</label>
+                <input style={inp} type="time" value={propForm.time} onChange={e=>setPropForm({...propForm,time:e.target.value})}/>
+              </div>
+            </div>
+            <label style={lbl}>제안하는 사람</label>
+            <div style={{...row(6),marginBottom:8}}>
+              {[["me",names.me,"💙"],["you",names.you,"🩷"]].map(([k,n,em])=>(
+                <button key={k} onClick={()=>setPropForm({...propForm,by:k})} style={{flex:1,padding:"8px 4px",border:`1.5px solid ${propForm.by===k?C.primary:C.border}`,background:propForm.by===k?C.primaryLight:C.bg,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:propForm.by===k?800:600,color:C.text,...base}}>{em} {n}</button>
+              ))}
+            </div>
+            <input style={{...inp,marginBottom:8}} placeholder="메모 (선택)" value={propForm.memo} onChange={e=>setPropForm({...propForm,memo:e.target.value})}/>
+            <div style={row(8)}>
+              <button onClick={()=>setProposing(null)} style={{...btn("#EEE",C.text),flex:1,fontSize:13}}>취소</button>
+              <button onClick={()=>propose(it.id)} style={{...btn(),flex:2,fontSize:13}}>💌 제안하기</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Apply filter
+  const filtered=items.filter(it=>{
+    if(filter==="date") return it.eventType!=="personal";
+    if(filter==="personal") return it.eventType==="personal";
+    return true;
+  });
+  const meItems=filtered.filter(it=>it.addedBy==="me");
+  const youItems=filtered.filter(it=>it.addedBy==="you");
+  const pendingProposals=items.filter(it=>it.status==="proposed"&&it.eventType!=="personal");
 
   return (
     <div>
@@ -1325,25 +1404,40 @@ function BucketSection({names}) {
         </div>
       )}
 
-      <div style={{...row(0,"center","space-between"),marginBottom:12}}>
-        <div style={{fontSize:13,color:C.textMuted}}>총 {items.length}개 · 완료 {items.filter(i=>i.status==="done").length}개</div>
+      <div style={{background:C.bg,borderRadius:12,padding:3,marginBottom:10,display:"flex"}}>
+        {[["all","✨ 전체"],["date","💑 데이트"],["personal","📌 개인 일정"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setFilter(k)} style={{flex:1,border:"none",borderRadius:10,padding:"7px 4px",cursor:"pointer",fontWeight:filter===k?800:600,fontSize:11,background:filter===k?C.card:"transparent",color:filter===k?C.primary:C.textMuted,boxShadow:filter===k?"0 1px 4px rgba(0,0,0,0.08)":"none",...base,transition:"all 0.15s"}}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{...row(0,"center","space-between"),marginBottom:10}}>
+        <div style={{fontSize:12,color:C.textMuted}}>총 {filtered.length}개</div>
         <div style={row(4)}>
-          <button onClick={()=>setView("calendar")} style={{...btn(view==="calendar"?C.primary:"#EEE",view==="calendar"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📅 달력</button>
-          <button onClick={()=>setView("list")} style={{...btn(view==="list"?C.primary:"#EEE",view==="list"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📋 목록</button>
+          <button onClick={()=>setView("calendar")} style={{...btn(view==="calendar"?C.primary:"#EEE",view==="calendar"?"#fff":C.text),padding:"6px 11px",fontSize:11}}>📅 달력</button>
+          <button onClick={()=>setView("list")} style={{...btn(view==="list"?C.primary:"#EEE",view==="list"?"#fff":C.text),padding:"6px 11px",fontSize:11}}>📋 목록</button>
         </div>
       </div>
 
-      {view==="calendar"&&<BucketCalendar items={items} names={names} onPropose={proposeFromCal} onAccept={accept} onReject={reject} onComplete={complete}/>}
+      {view==="calendar"&&<BucketCalendar items={filtered} names={names} onPropose={proposeFromCal} onAccept={accept} onReject={reject} onComplete={complete} onDelete={remove}/>}
 
       <button onClick={()=>setShowForm(!showForm)} style={{...btn(),width:"100%",marginBottom:12}}>
-        {showForm?"✕ 닫기":"+ 데이트신청 추가"}
+        {showForm?"✕ 닫기":"+ 데이트신청 / 개인 일정 추가"}
       </button>
 
       {showForm&&(
         <div style={card()}>
-          <label style={lbl}>하고 싶은 것</label>
-          <input style={{...inp,marginBottom:10}} placeholder="예: 제주도 여행, 한강 피크닉..." value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
-          <label style={lbl}>누가 추가?</label>
+          <label style={lbl}>유형</label>
+          <div style={{...row(8),marginBottom:12}}>
+            {[["date","💑 데이트 제안","상대방 수락 필요"],["personal","📌 개인 일정","나만의 일정"]].map(([k,l,d])=>(
+              <button key={k} onClick={()=>setForm({...form,eventType:k})} style={{flex:1,padding:"10px 6px",border:`2px solid ${form.eventType===k?C.primary:C.border}`,borderRadius:10,background:form.eventType===k?C.primaryLight:C.bg,cursor:"pointer",...base,color:C.text,textAlign:"left"}}>
+                <div style={{fontSize:13,fontWeight:800}}>{l}</div>
+                <div style={{fontSize:10,color:C.textMuted,marginTop:2}}>{d}</div>
+              </button>
+            ))}
+          </div>
+          <label style={lbl}>{form.eventType==="personal"?"일정 내용":"하고 싶은 것"}</label>
+          <input style={{...inp,marginBottom:10}} placeholder={form.eventType==="personal"?"예: 친구 결혼식, 출장, 회식...":"예: 제주도 여행, 한강 피크닉..."} value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+          <label style={lbl}>누구?</label>
           <div style={{...row(8),marginBottom:10}}>
             {["me","you"].map(side=>(
               <button key={side} onClick={()=>setForm({...form,addedBy:side})} style={{flex:1,padding:9,border:`2px solid ${form.addedBy===side?C.primary:C.border}`,borderRadius:10,background:form.addedBy===side?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,...base,fontSize:13,color:C.text}}>
@@ -1353,15 +1447,33 @@ function BucketSection({names}) {
           </div>
           <label style={lbl}>메모 (선택)</label>
           <input style={{...inp,marginBottom:12}} placeholder="어디서, 어떻게..." value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
-          <button onClick={add} style={{...btn(),width:"100%"}}>추가하기</button>
+          {form.eventType==="personal"&&proposing==="__new__"&&(
+            <div style={{padding:12,background:C.bg,borderRadius:10,marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:800,marginBottom:8,color:C.primary}}>📅 일정 날짜/시간</div>
+              <div style={{...row(8),marginBottom:8}}>
+                <div style={{flex:1.4}}>
+                  <label style={lbl}>날짜</label>
+                  <input style={{...inp,background:C.card}} type="date" value={propForm.date} onChange={e=>setPropForm({...propForm,date:e.target.value})}/>
+                </div>
+                <div style={{flex:1}}>
+                  <label style={lbl}>시간</label>
+                  <input style={{...inp,background:C.card}} type="time" value={propForm.time} onChange={e=>setPropForm({...propForm,time:e.target.value})}/>
+                </div>
+              </div>
+              <button onClick={addPersonalScheduled} disabled={!form.title.trim()} style={{...btn(),width:"100%",fontSize:13,opacity:!form.title.trim()?0.5:1}}>✅ 일정 등록</button>
+            </div>
+          )}
+          {!(form.eventType==="personal"&&proposing==="__new__")&&(
+            <button onClick={add} style={{...btn(),width:"100%"}}>{form.eventType==="personal"?"📅 날짜/시간 정하기":"💕 데이트신청 추가"}</button>
+          )}
         </div>
       )}
 
       {view==="list"&&(
         <>
-          {meItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#3A5FCD"}}>💙 {names.me}의 데이트신청</div>{meItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
-          {youItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#C2185B",marginTop:meItems.length>0?12:0}}>🩷 {names.you}의 데이트신청</div>{youItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
-          {items.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>달력에서 날짜를 눌러 데이트를 제안하거나<br/>데이트신청을 먼저 추가해보세요 💕</div>}
+          {meItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#3A5FCD"}}>💙 {names.me}</div>{meItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
+          {youItems.length>0&&<><div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#C2185B",marginTop:meItems.length>0?12:0}}>🩷 {names.you}</div>{youItems.map(it=><ItemCard key={it.id} it={it}/>)}</>}
+          {filtered.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>{filter==="personal"?"등록된 개인 일정이 없어요 📌":filter==="date"?"등록된 데이트신청이 없어요 💑":"달력에서 날짜를 눌러 시작해보세요 💕"}</div>}
         </>
       )}
     </div>
@@ -1371,51 +1483,179 @@ function BucketSection({names}) {
 // ════ GRATITUDE ════
 function GratitudeSection({names}) {
   const [records,setRecords]=useState([]);
-  const [today_,setToday_]=useState({me:"",you:""});
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [form,setForm]=useState({by:"me",text:"",photo:null});
+  const [viewPhoto,setViewPhoto]=useState(null);
 
   useEffect(()=>{
     sGet("gratitude").then(data=>{
       const d=data||[];
-      setRecords(d);
-      const td=d.find(r=>r.date===todayStr());
-      if(td) setToday_({me:td.me||"",you:td.you||""});
+      // Migrate old format (per-day shared {date,me,you}) → new format (individual entries)
+      const migrated=[];
+      d.forEach(r=>{
+        if(r.id&&r.by){ migrated.push(r); }
+        else if(r.date&&(r.me||r.you)){
+          if(r.me) migrated.push({id:Date.now()+Math.random(),date:r.date,by:"me",text:r.me,photo:null});
+          if(r.you) migrated.push({id:Date.now()+Math.random()+1,date:r.date,by:"you",text:r.you,photo:null});
+        }
+      });
+      setRecords(migrated);
+      if(d.some(r=>r.date&&!r.id)) sSet("gratitude",migrated);
     });
   },[]);
 
-  const save=async(field,val)=>{
-    const entry={...today_,[field]:val};
-    setToday_(entry);
-    const filtered=records.filter(r=>r.date!==todayStr());
-    const updated=[...filtered,{date:todayStr(),...entry}].sort((a,b)=>b.date.localeCompare(a.date));
+  const handlePhoto=async e=>{
+    const file=e.target.files?.[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const maxDim=900;
+        const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+        const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const canvas=document.createElement("canvas");
+        canvas.width=w; canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        setForm(f=>({...f,photo:canvas.toDataURL("image/jpeg",0.72)}));
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveEntry=async()=>{
+    if(!form.text.trim()&&!form.photo) return;
+    let updated;
+    if(editing){
+      updated=records.map(r=>r.id===editing?{...r,by:form.by,text:form.text,photo:form.photo}:r);
+    } else {
+      updated=[...records,{id:Date.now(),date:todayStr(),by:form.by,text:form.text,photo:form.photo}];
+    }
+    updated.sort((a,b)=>(b.date+b.id).localeCompare(a.date+a.id));
+    await sSet("gratitude",updated);
+    setRecords(updated);
+    setForm({by:"me",text:"",photo:null});
+    setEditing(null);
+    setShowForm(false);
+  };
+
+  const startEdit=r=>{
+    setForm({by:r.by,text:r.text||"",photo:r.photo||null});
+    setEditing(r.id);
+    setShowForm(true);
+  };
+
+  const delEntry=async id=>{
+    if(!confirm("이 감사 메모를 삭제할까요?")) return;
+    const updated=records.filter(r=>r.id!==id);
     await sSet("gratitude",updated);
     setRecords(updated);
   };
 
-  const past=records.filter(r=>r.date!==todayStr()).slice(0,7);
+  const today=records.filter(r=>r.date===todayStr());
+  const past=records.filter(r=>r.date!==todayStr());
+  // Group past by date
+  const byDate={};
+  past.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+  const pastDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,14);
+
+  const EntryCard=({r})=>{
+    const isMe=r.by==="me";
+    const bg=isMe?"#EEF4FF":"#FFF0F5";
+    const nameColor=isMe?"#3A5FCD":"#C2185B";
+    return (
+      <div style={{background:bg,borderRadius:12,padding:r.photo?0:"11px 12px",marginBottom:8,overflow:"hidden",border:`1px solid ${isMe?"#D6E4FF":"#FFD6E5"}`}}>
+        {r.photo&&(
+          <img src={r.photo} alt="" onClick={()=>setViewPhoto(r.photo)} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block",cursor:"pointer"}}/>
+        )}
+        <div style={{padding:r.photo?"10px 12px":0}}>
+          <div style={{...row(0,"center","space-between"),marginBottom:r.text?6:0}}>
+            <span style={{fontSize:11,color:nameColor,fontWeight:800}}>{isMe?"💙":"🩷"} {isMe?names.me:names.you}</span>
+            <div style={row(6)}>
+              <button onClick={()=>startEdit(r)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,color:C.textMuted,padding:"2px 4px"}} title="수정">✏️</button>
+              <button onClick={()=>delEntry(r.id)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,color:C.textMuted,padding:"2px 4px"}} title="삭제">🗑</button>
+            </div>
+          </div>
+          {r.text&&<div style={{fontSize:13,lineHeight:1.5,color:C.text,whiteSpace:"pre-wrap"}}>{r.text}</div>}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
-      <div style={card({background:"linear-gradient(135deg,#FFF9C4,#FFF3E0)"})}>
-        <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#B8860B"}}>💌 오늘의 감사 메모</div>
-        <label style={lbl}>💙 {names.me}의 감사 메모</label>
-        <textarea style={{...ta,marginBottom:12,background:"#EEF4FF"}} placeholder={`${names.you}에게 감사한 점을 적어보세요...`} value={today_.me} onChange={e=>save("me",e.target.value)}/>
-        <label style={lbl}>🩷 {names.you}의 감사 메모</label>
-        <textarea style={{...ta,background:"#FFF0F5"}} placeholder={`${names.me}에게 감사한 점을 적어보세요...`} value={today_.you} onChange={e=>save("you",e.target.value)}/>
+      <div style={card({background:"linear-gradient(135deg,#FFF9C4,#FFE0B2)",textAlign:"center"})}>
+        <div style={{fontSize:32}}>💌</div>
+        <div style={{fontSize:15,fontWeight:800,color:"#B8860B",marginTop:4}}>오늘의 감사 메모</div>
+        <div style={{fontSize:11,color:C.textMuted,marginTop:3}}>{fmtDate(todayStr())} · 오늘 {today.length}개 기록됨</div>
       </div>
 
-      {past.length>0&&(
-        <div style={card()}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>📖 지난 감사 기록</div>
-          {past.map(r=>(
-            <div key={r.date} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6}}>{fmtDate(r.date)}</div>
-              {r.me&&<div style={{background:"#EEF4FF",borderRadius:8,padding:"7px 10px",marginBottom:4}}><span style={{fontSize:10,color:"#3A5FCD",fontWeight:700}}>{names.me} · </span><span style={{fontSize:13}}>{r.me}</span></div>}
-              {r.you&&<div style={{background:"#FFF0F5",borderRadius:8,padding:"7px 10px"}}><span style={{fontSize:10,color:"#C2185B",fontWeight:700}}>{names.you} · </span><span style={{fontSize:13}}>{r.you}</span></div>}
+      {!showForm&&(
+        <button onClick={()=>{setForm({by:"me",text:"",photo:null});setEditing(null);setShowForm(true);}} style={{...btn(),width:"100%",marginBottom:12}}>+ 감사 메모 작성하기</button>
+      )}
+
+      {showForm&&(
+        <div style={card({border:`2px solid ${C.primary}`})}>
+          <div style={{fontSize:13,fontWeight:800,marginBottom:10,color:C.primary}}>{editing?"✏️ 메모 수정":"💌 새 감사 메모"}</div>
+          <label style={lbl}>누가 작성?</label>
+          <div style={{...row(8),marginBottom:12}}>
+            {["me","you"].map(side=>(
+              <button key={side} onClick={()=>setForm({...form,by:side})} style={{flex:1,padding:10,border:`2px solid ${form.by===side?C.primary:C.border}`,borderRadius:10,background:form.by===side?C.primaryLight:C.bg,cursor:"pointer",fontWeight:700,...base,fontSize:13,color:C.text}}>
+                {side==="me"?`💙 ${names.me}`:`🩷 ${names.you}`}
+              </button>
+            ))}
+          </div>
+          <label style={lbl}>감사 메모</label>
+          <textarea style={{...ta,marginBottom:12,minHeight:90}} placeholder={`${form.by==="me"?names.you:names.me}에게 감사한 점을 적어보세요...`} value={form.text} onChange={e=>setForm({...form,text:e.target.value})}/>
+          <label style={lbl}>📷 사진 (선택)</label>
+          {form.photo
+            ? (
+              <div style={{position:"relative",marginBottom:12,borderRadius:10,overflow:"hidden"}}>
+                <img src={form.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}}/>
+                <button onClick={()=>setForm({...form,photo:null})} style={{position:"absolute",top:8,right:8,border:"none",background:"rgba(0,0,0,0.55)",color:"#fff",width:30,height:30,borderRadius:"50%",cursor:"pointer",fontSize:16,lineHeight:1,...base}}>×</button>
+              </div>
+            )
+            : (
+              <label style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12,cursor:"pointer",padding:"18px 12px",border:`1.5px dashed ${C.border}`,borderRadius:10,color:C.textMuted,fontSize:12,fontWeight:600,background:C.bg,...base}}>
+                📷 사진 추가하기
+                <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+              </label>
+            )}
+          <div style={row(8)}>
+            <button onClick={()=>{setShowForm(false);setEditing(null);setForm({by:"me",text:"",photo:null});}} style={{...btn("#EEE",C.text),flex:1}}>취소</button>
+            <button onClick={saveEntry} disabled={!form.text.trim()&&!form.photo} style={{...btn(),flex:2,opacity:(!form.text.trim()&&!form.photo)?0.5:1,cursor:(!form.text.trim()&&!form.photo)?"not-allowed":"pointer"}}>{editing?"수정 완료":"저장"}</button>
+          </div>
+        </div>
+      )}
+
+      {today.length>0&&(
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:12,fontWeight:800,color:C.primary,marginBottom:8,letterSpacing:"0.3px"}}>✨ 오늘</div>
+          {today.map(r=><EntryCard key={r.id} r={r}/>)}
+        </div>
+      )}
+
+      {pastDates.length>0&&(
+        <div>
+          <div style={{fontSize:12,fontWeight:800,color:C.textMuted,marginBottom:8,letterSpacing:"0.3px"}}>📖 지난 메모</div>
+          {pastDates.map(d=>(
+            <div key={d} style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6,paddingLeft:4}}>{fmtDate(d)}</div>
+              {byDate[d].map(r=><EntryCard key={r.id} r={r}/>)}
             </div>
           ))}
         </div>
       )}
       {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:30,lineHeight:2}}>매일 감사한 마음을 기록해봐요 💌</div>}
+
+      {viewPhoto&&(
+        <div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.93)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <img src={viewPhoto} alt="" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",borderRadius:8}}/>
+          <button onClick={()=>setViewPhoto(null)} style={{position:"absolute",top:20,right:20,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",width:38,height:38,borderRadius:"50%",cursor:"pointer",fontSize:22,lineHeight:1,...base}}>×</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1516,7 +1756,7 @@ function HomeTab({onTabChange,names}) {
           {label:"이번달 외식",value:`${stats.dining}회`,e:"🍽️",bg:"#FFF0EC",tab:"dining"},
           {label:"현재 잔액",value:fmtMoney(Math.abs(stats.balance)),e:"💰",bg:stats.balance>=0?C.greenLt:C.redLt,tab:"budget"},
           {label:"오늘 케어",value:`${stats.catDone}/3`,e:"🐱",bg:"#EEF7F5",tab:"cats"},
-          {label:"미해결 싸움",value:`${stats.fights}건`,e:"💬",bg:stats.fights>0?C.redLt:C.greenLt,tab:"fights"},
+          {label:"미해결 대화신청",value:`${stats.fights}건`,e:"💬",bg:stats.fights>0?C.redLt:C.greenLt,tab:"fights"},
         ].map(s=>(
           <button key={s.tab} onClick={()=>onTabChange(s.tab)} style={{...card({background:s.bg,border:"none",margin:0,padding:14,cursor:"pointer"}),textAlign:"left"}}>
             <div style={{fontSize:26,marginBottom:4}}>{s.e}</div>
@@ -1564,12 +1804,12 @@ const TABS=[
   {id:"home",label:"홈",e:"🏡"},
   {id:"dining",label:"외식",e:"🍽️"},
   {id:"cats",label:"냐옹이",e:"🐱"},
-  {id:"fights",label:"싸움",e:"💬"},
+  {id:"fights",label:"대화신청",e:"💬"},
   {id:"budget",label:"가계부",e:"💰"},
   {id:"our",label:"우리",e:"❤️"},
 ];
 
-const TITLES={home:"우리 부부 관리 💑",dining:"외식 기록 🍽️",cats:"냐옹이 케어 🐱",fights:"싸움 일지 💬",budget:"공용 가계부 💰",our:"우리만의 공간 ❤️"};
+const TITLES={home:"우리 부부 관리 💑",dining:"외식 기록 🍽️",cats:"냐옹이 케어 🐱",fights:"대화신청 일지 💬",budget:"공용 가계부 💰",our:"우리만의 공간 ❤️"};
 
 function App() {
   const [tab,setTab]=useState("home");
