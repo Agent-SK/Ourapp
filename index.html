@@ -1927,14 +1927,53 @@ function CodeEntry({ onSubmit }) {
 function Root() {
   const [code, setCode] = useState(coupleCode);
   const [ready, setReady] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
-    if (code) {
-      // Test connection
-      window.db.collection("couples").doc(code).set({lastSeen: Date.now()}, {merge: true})
-        .then(() => setReady(true))
-        .catch(e => { console.error(e); alert("연결 실패: Firebase 설정을 확인하세요"); });
-    }
+    if (!code) return;
+    setReady(false);
+    setErrMsg("");
+
+    let done = false;
+    // Connection test: write to a path INSIDE couples/{code}/... so it matches security rules
+    const testRef = window.db.collection("couples").doc(code).collection("data").doc("_meta");
+
+    const timeout = setTimeout(() => {
+      if (done) return;
+      done = true;
+      setErrMsg(
+        "연결 시간이 초과됐어요.\n\n" +
+        "확인해보세요:\n" +
+        "1. 인터넷 연결 상태\n" +
+        "2. Firebase 콘솔 → Firestore Database 가 '만들어져' 있는지\n" +
+        "3. Firestore '규칙' 탭에서 규칙을 게시했는지\n" +
+        "4. index.html 의 firebaseConfig 가 본인 것인지"
+      );
+    }, 8000);
+
+    testRef.set({ lastSeen: Date.now() }, { merge: true })
+      .then(() => {
+        if (done) return;
+        done = true;
+        clearTimeout(timeout);
+        setReady(true);
+      })
+      .catch(e => {
+        if (done) return;
+        done = true;
+        clearTimeout(timeout);
+        console.error("Firestore connection error:", e);
+        const code2 = e.code || "";
+        if (code2.includes("permission")) {
+          setErrMsg("Firestore 규칙 문제예요.\n\nFirebase 콘솔 → Firestore Database → '규칙' 탭에서\nREADME 의 규칙을 붙여넣고 '게시' 버튼을 눌렀는지 확인하세요.\n\n에러: " + code2);
+        } else if (code2.includes("unavailable")) {
+          setErrMsg("Firestore 서버에 연결할 수 없어요.\n\nFirebase 콘솔에서 Firestore Database 가\n실제로 '만들어져' 있는지 확인하세요.\n(프로젝트만 만들고 Database 생성을 안 한 경우가 많아요)\n\n에러: " + code2);
+        } else {
+          setErrMsg("연결 실패: " + (e.message || code2 || "알 수 없는 오류"));
+        }
+      });
+
+    return () => { done = true; clearTimeout(timeout); };
   }, [code]);
 
   if (!code) {
@@ -1945,11 +1984,32 @@ function Root() {
     }} />;
   }
 
+  if (errMsg) {
+    return (
+      <div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#FFF5EE,#FAD4CB)",textAlign:"center"}}>
+        <div style={{fontSize:56,marginBottom:16}}>😢</div>
+        <div style={{fontSize:18,fontWeight:800,color:"#3D2C2C",marginBottom:14}}>연결에 실패했어요</div>
+        <div style={{fontSize:13,color:"#6D5C5C",lineHeight:1.7,whiteSpace:"pre-wrap",background:"#fff",borderRadius:14,padding:"16px 18px",maxWidth:340,marginBottom:18,textAlign:"left"}}>{errMsg}</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{ setErrMsg(""); setCode(""); setCode(coupleCode); }}
+                  style={{background:"#E8735A",color:"#fff",border:"none",borderRadius:12,padding:"12px 20px",fontSize:14,fontWeight:800,cursor:"pointer"}}>
+            🔄 다시 시도
+          </button>
+          <button onClick={()=>{ localStorage.removeItem("coupleCode"); location.reload(); }}
+                  style={{background:"#fff",color:"#E8735A",border:"2px solid #E8735A",borderRadius:12,padding:"11px 20px",fontSize:14,fontWeight:800,cursor:"pointer"}}>
+            코드 다시 입력
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!ready) {
     return (
       <div className="splash">
         <div className="e">💕</div>
         <div>연결 중...</div>
+        <div style={{fontSize:11,color:"#C8B8B8",marginTop:4}}>잠시만 기다려주세요</div>
       </div>
     );
   }
