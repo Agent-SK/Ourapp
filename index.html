@@ -319,6 +319,7 @@ const CAT_TASKS=[
   {id:"toilet",label:"화장실 청소",emoji:"🚽"},
   {id:"water",label:"물그릇 교체",emoji:"💧"},
   {id:"bowl",label:"밥그릇 설거지",emoji:"🫧"},
+  {id:"play",label:"놀아주기",emoji:"🎾"},
 ];
 
 function MilestoneCalendar({type,label,emoji,warning,history,names,onAdd,onRemove}) {
@@ -575,10 +576,10 @@ function CatsTab({names}) {
 const EXP_CATS=["식비","외식","카페","쇼핑","교통","생활용품","의료/건강","문화/여가","반려동물","기타"];
 const INC_CATS=["월급","부수입","용돈","투자수익","기타"];
 
-function BudgetCalendar({records,onAdd,onDelete}) {
+function BudgetCalendar({records,onAdd,onDelete,names}) {
   const [viewDate,setViewDate]=useState(new Date());
   const [pickDay,setPickDay]=useState(null);
-  const [form,setForm]=useState({type:"expense",amount:"",category:"식비",memo:""});
+  const [form,setForm]=useState({type:"expense",amount:"",category:"식비",memo:"",payer:"shared"});
 
   const y=viewDate.getFullYear(), m=viewDate.getMonth();
   const firstDay=new Date(y,m,1).getDay();
@@ -597,12 +598,12 @@ function BudgetCalendar({records,onAdd,onDelete}) {
   const handleAdd=async()=>{
     if(!form.amount||isNaN(Number(form.amount))) return;
     await onAdd({...form,date:pickDay,id:Date.now(),amount:Math.abs(Number(form.amount))});
-    setForm({type:"expense",amount:"",category:"식비",memo:""});
+    setForm({type:"expense",amount:"",category:"식비",memo:"",payer:"shared"});
   };
 
   const openDay=key=>{
     setPickDay(key);
-    setForm({type:"expense",amount:"",category:"식비",memo:""});
+    setForm({type:"expense",amount:"",category:"식비",memo:"",payer:"shared"});
   };
 
   return (
@@ -659,19 +660,26 @@ function BudgetCalendar({records,onAdd,onDelete}) {
             {dayRecs.length>0&&(
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:C.textMuted,marginBottom:6,letterSpacing:"0.3px"}}>이 날 내역 {dayRecs.length}건</div>
-                {dayRecs.map(r=>(
-                  <div key={r.id} style={{background:r.type==="income"?C.greenLt:C.redLt,borderRadius:10,padding:"9px 11px",marginBottom:5,...row(10,"center")}}>
-                    <span style={{fontSize:18}}>{r.type==="income"?"💵":"💸"}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{...row(0,"center","space-between")}}>
-                        <span style={{fontWeight:700,fontSize:13}}>{r.category}</span>
-                        <span style={{fontWeight:800,fontSize:13,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+                {dayRecs.map(r=>{
+                  const payerLabel=r.payer==="me"?`💙 ${names?.me||"나"}`:r.payer==="you"?`🩷 ${names?.you||"상대방"}`:"👫 공용";
+                  const payerBg=r.payer==="me"?"#D6E4FF":r.payer==="you"?"#FFD6E5":"#FFF3D6";
+                  return (
+                    <div key={r.id} style={{background:r.type==="income"?C.greenLt:C.redLt,borderRadius:10,padding:"9px 11px",marginBottom:5,...row(10,"center")}}>
+                      <span style={{fontSize:18}}>{r.type==="income"?"💵":"💸"}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{...row(0,"center","space-between")}}>
+                          <div style={row(6)}>
+                            <span style={{fontWeight:700,fontSize:13}}>{r.category}</span>
+                            <span style={{fontSize:10,background:payerBg,padding:"2px 6px",borderRadius:8,fontWeight:700,color:C.text}}>{payerLabel}</span>
+                          </div>
+                          <span style={{fontWeight:800,fontSize:13,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+                        </div>
+                        {r.memo&&<div style={{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.memo}</div>}
                       </div>
-                      {r.memo&&<div style={{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.memo}</div>}
+                      <button onClick={()=>onDelete(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:16,padding:"0 2px"}}>×</button>
                     </div>
-                    <button onClick={()=>onDelete(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:16,padding:"0 2px"}}>×</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -694,6 +702,17 @@ function BudgetCalendar({records,onAdd,onDelete}) {
                   </select>
                 </div>
               </div>
+              <label style={lbl}>{form.type==="expense"?"누가 썼어요?":"누구 수입?"}</label>
+              <div style={{...row(6),marginBottom:10}}>
+                {[
+                  ["shared","👫 공용","#FFE9C5"],
+                  ["me",`💙 ${names?.me||"나"}`,"#D6E4FF"],
+                  ["you",`🩷 ${names?.you||"상대방"}`,"#FFD6E5"],
+                ].map(([k,l,bg])=>(
+                  <button key={k} onClick={()=>setForm({...form,payer:k})}
+                    style={{flex:1,padding:"9px 4px",border:`2px solid ${form.payer===k?C.primary:C.border}`,borderRadius:10,background:form.payer===k?bg:C.card,cursor:"pointer",fontWeight:form.payer===k?800:600,fontSize:12,color:C.text,...base}}>{l}</button>
+                ))}
+              </div>
               <div style={{marginBottom:12}}>
                 <label style={lbl}>메모 (선택)</label>
                 <input style={{...inp,background:C.card}} placeholder="메모..." value={form.memo} onChange={e=>setForm({...form,memo:e.target.value})}/>
@@ -707,11 +726,16 @@ function BudgetCalendar({records,onAdd,onDelete}) {
   );
 }
 
-function BudgetTab() {
+function BudgetTab({names}) {
   const [records,setRecords]=useState([]);
   const [view,setView]=useState("calendar");
+  const [payerFilter,setPayerFilter]=useState("all");
 
-  useEffect(()=>{sGet("budget").then(d=>setRecords(d||[]));}, []);
+  useEffect(()=>{sGet("budget").then(d=>{
+    // Migrate: records without payer become "shared"
+    const migrated=(d||[]).map(r=>({...r,payer:r.payer||"shared"}));
+    setRecords(migrated);
+  });}, []);
   const saveAll=async d=>{await sSet("budget",d);setRecords(d);};
   const addRec=async rec=>{await saveAll([...records,rec]);};
   const delRec=async id=>{await saveAll(records.filter(r=>r.id!==id));};
@@ -720,9 +744,17 @@ function BudgetTab() {
   const mRecs=records.filter(r=>r.date.startsWith(thisMonth()));
   const mInc=mRecs.filter(r=>r.type==="income").reduce((s,r)=>s+r.amount,0);
   const mExp=mRecs.filter(r=>r.type==="expense").reduce((s,r)=>s+r.amount,0);
+  // Payer breakdown for this month's expenses
+  const byPayer={shared:0,me:0,you:0};
+  mRecs.filter(r=>r.type==="expense").forEach(r=>{byPayer[r.payer||"shared"]+=r.amount;});
+
+  // Filter records by payer
+  const filtered=payerFilter==="all"?records:records.filter(r=>(r.payer||"shared")===payerFilter);
+  const filteredM=filtered.filter(r=>r.date.startsWith(thisMonth())).filter(r=>r.type==="expense");
   const catTotals={};
-  mRecs.filter(r=>r.type==="expense").forEach(r=>{catTotals[r.category]=(catTotals[r.category]||0)+r.amount;});
+  filteredM.forEach(r=>{catTotals[r.category]=(catTotals[r.category]||0)+r.amount;});
   const topCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const filteredExpTotal=filteredM.reduce((s,r)=>s+r.amount,0);
 
   return (
     <div>
@@ -737,24 +769,53 @@ function BudgetTab() {
         </div>
       </div>
 
+      {mExp>0&&(
+        <div style={card()}>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:C.textMuted,letterSpacing:"0.3px"}}>👫 이달 지출자별</div>
+          <div style={{...row(8)}}>
+            {[
+              ["shared","👫 공용","#FFE9C5","#B8860B"],
+              ["me",`💙 ${names?.me||"나"}`,"#D6E4FF","#3A5FCD"],
+              ["you",`🩷 ${names?.you||"상대방"}`,"#FFD6E5","#C2185B"],
+            ].map(([k,l,bg,col])=>{
+              const amt=byPayer[k]||0;
+              const pct=mExp>0?(amt/mExp*100):0;
+              return (
+                <div key={k} style={{flex:1,background:bg,borderRadius:10,padding:"9px 8px",textAlign:"center"}}>
+                  <div style={{fontSize:10,fontWeight:700,color:col,marginBottom:2}}>{l}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.text,letterSpacing:"-0.3px"}}>{fmtMoney(amt)}</div>
+                  <div style={{fontSize:9,color:C.textMuted,marginTop:1}}>{pct.toFixed(0)}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div style={{background:C.bg,borderRadius:12,padding:3,marginBottom:10,display:"flex"}}>
+        {[["all","✨ 전체"],["shared","👫 공용"],["me",`💙 ${names?.me||"나"}`],["you",`🩷 ${names?.you||"상대방"}`]].map(([k,l])=>(
+          <button key={k} onClick={()=>setPayerFilter(k)} style={{flex:1,border:"none",borderRadius:10,padding:"7px 4px",cursor:"pointer",fontWeight:payerFilter===k?800:600,fontSize:11,background:payerFilter===k?C.card:"transparent",color:payerFilter===k?C.primary:C.textMuted,boxShadow:payerFilter===k?"0 1px 4px rgba(0,0,0,0.08)":"none",...base,transition:"all 0.15s"}}>{l}</button>
+        ))}
+      </div>
+
       <div style={{...row(0,"center","space-between"),marginBottom:12}}>
-        <div style={{fontSize:13,color:C.textMuted}}>총 {records.length}건 기록</div>
+        <div style={{fontSize:13,color:C.textMuted}}>총 {filtered.length}건 기록</div>
         <div style={row(4)}>
           <button onClick={()=>setView("calendar")} style={{...btn(view==="calendar"?C.primary:"#EEE",view==="calendar"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📅 달력</button>
           <button onClick={()=>setView("list")} style={{...btn(view==="list"?C.primary:"#EEE",view==="list"?"#fff":C.text),padding:"7px 12px",fontSize:12}}>📋 목록</button>
         </div>
       </div>
 
-      {view==="calendar"&&<BudgetCalendar records={records} onAdd={addRec} onDelete={delRec}/>}
+      {view==="calendar"&&<BudgetCalendar records={filtered} onAdd={addRec} onDelete={delRec} names={names}/>}
 
       {topCats.length>0&&(
         <div style={card()}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>이달 지출 TOP</div>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>이달 지출 TOP {payerFilter!=="all"&&<span style={{fontSize:11,fontWeight:600,color:C.textMuted}}>({payerFilter==="shared"?"공용":payerFilter==="me"?names?.me:names?.you})</span>}</div>
           {topCats.map(([cat,amt])=>(
             <div key={cat} style={{marginBottom:8}}>
               <div style={{...row(0,"center","space-between"),fontSize:12,marginBottom:3}}><span>{cat}</span><span style={{fontWeight:700}}>{fmtMoney(amt)}</span></div>
               <div style={{height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
-                <div style={{width:`${mExp>0?(amt/mExp)*100:0}%`,height:"100%",background:C.primary,borderRadius:3}}/>
+                <div style={{width:`${filteredExpTotal>0?(amt/filteredExpTotal)*100:0}%`,height:"100%",background:C.primary,borderRadius:3}}/>
               </div>
             </div>
           ))}
@@ -763,20 +824,27 @@ function BudgetTab() {
 
       {view==="list"&&(
         <>
-          {[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(r=>(
-            <div key={r.id} style={{...card(),...row(12,"center")}}>
-              <div style={{width:40,height:40,borderRadius:12,background:r.type==="income"?C.greenLt:C.redLt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{r.type==="income"?"💵":"💸"}</div>
-              <div style={{flex:1}}>
-                <div style={{...row(0,"center","space-between")}}>
-                  <span style={{fontWeight:700}}>{r.category}</span>
-                  <span style={{fontWeight:800,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+          {[...filtered].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(r=>{
+            const payerLabel=r.payer==="me"?`💙 ${names?.me||"나"}`:r.payer==="you"?`🩷 ${names?.you||"상대방"}`:"👫 공용";
+            const payerBg=r.payer==="me"?"#D6E4FF":r.payer==="you"?"#FFD6E5":"#FFF3D6";
+            return (
+              <div key={r.id} style={{...card(),...row(12,"center")}}>
+                <div style={{width:40,height:40,borderRadius:12,background:r.type==="income"?C.greenLt:C.redLt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{r.type==="income"?"💵":"💸"}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{...row(0,"center","space-between")}}>
+                    <div style={row(6)}>
+                      <span style={{fontWeight:700}}>{r.category}</span>
+                      <span style={{fontSize:10,background:payerBg,padding:"2px 6px",borderRadius:8,fontWeight:700,color:C.text}}>{payerLabel}</span>
+                    </div>
+                    <span style={{fontWeight:800,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
+                  </div>
+                  <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(r.date)}{r.memo?` · ${r.memo}`:""}</div>
                 </div>
-                <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(r.date)}{r.memo?` · ${r.memo}`:""}</div>
+                <button onClick={()=>delRec(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:18,padding:0}}>×</button>
               </div>
-              <button onClick={()=>delRec(r.id)} style={{border:"none",background:"none",color:C.textMuted,cursor:"pointer",fontSize:18,padding:0}}>×</button>
-            </div>
-          ))}
-          {records.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>달력에서 날짜를 눌러 가계부를 시작해보세요 💰</div>}
+            );
+          })}
+          {filtered.length===0&&<div style={{textAlign:"center",color:C.textMuted,padding:40}}>{payerFilter==="all"?"달력에서 날짜를 눌러 가계부를 시작해보세요 💰":"이 필터에 해당하는 내역이 없어요"}</div>}
         </>
       )}
     </div>
@@ -1833,7 +1901,7 @@ function App() {
         {tab==="dining"&&<DiningTab names={names}/>}
         {tab==="cats"&&<CatsTab names={names}/>}
         {tab==="fights"&&<FightsTab names={names}/>}
-        {tab==="budget"&&<BudgetTab/>}
+        {tab==="budget"&&<BudgetTab names={names}/>}
         {tab==="our"&&<OurTab names={names}/>}
       </div>
 
@@ -1853,16 +1921,34 @@ function App() {
 
 
 // ════ 커플 코드 입력 화면 ════
+// Hash function for password protection (SHA-256)
+async function hashPin(pin, salt) {
+  const enc = new TextEncoder();
+  const data = enc.encode(pin + "|" + salt);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
 function CodeEntry({ onSubmit }) {
   const [code, setCode] = useState("");
   const [mode, setMode] = useState("start"); // start | enter | create
   const [generated, setGenerated] = useState("");
 
   const generateCode = () => {
-    const adj = ["sweet","sunny","cozy","lovely","happy","cute","dreamy","starry"];
-    const noun = ["love","heart","moon","star","cloud","honey","kiss","hug"];
-    const num = Math.floor(Math.random()*9000+1000);
-    const g = adj[Math.floor(Math.random()*adj.length)] + "-" + noun[Math.floor(Math.random()*noun.length)] + "-" + num;
+    const adj = ["sweet","sunny","cozy","lovely","happy","cute","dreamy","starry","gentle","warm","bright","fluffy","peachy","blossom","velvet","golden"];
+    const noun = ["love","heart","moon","star","cloud","honey","kiss","hug","peach","cherry","muffin","sparkle","cocoa","violet","daisy","lily"];
+    // Two adjective+noun pairs + 6-char random = ~10^9 combinations
+    const a1 = adj[Math.floor(Math.random()*adj.length)];
+    const n1 = noun[Math.floor(Math.random()*noun.length)];
+    const a2 = adj[Math.floor(Math.random()*adj.length)];
+    const n2 = noun[Math.floor(Math.random()*noun.length)];
+    // 6 random alphanumeric chars
+    const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+    let rand = "";
+    const buf = new Uint32Array(6);
+    crypto.getRandomValues(buf);
+    for (let i = 0; i < 6; i++) rand += chars[buf[i] % chars.length];
+    const g = `${a1}-${n1}-${a2}-${n2}-${rand}`;
     setGenerated(g);
     setCode(g);
     setMode("create");
@@ -1924,19 +2010,128 @@ function CodeEntry({ onSubmit }) {
   );
 }
 
+function PinScreen({ mode, code, onSuccess, onChangeCode }) {
+  // mode: "setup" (new code, set PIN) | "verify" (existing code, enter PIN)
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setErr("");
+    if (pin.length < 4) { setErr("PIN은 4자리 이상이어야 해요"); return; }
+    if (mode === "setup" && pin !== pin2) { setErr("두 PIN이 일치하지 않아요"); return; }
+
+    setBusy(true);
+    try {
+      const metaRef = window.db.collection("couples").doc(code).collection("data").doc("_auth");
+      const snap = await metaRef.get();
+
+      if (mode === "setup") {
+        if (snap.exists && snap.data().pinHash) {
+          setErr("이미 등록된 코드예요. 이 코드는 다른 커플이 쓰고 있어요. 다른 코드를 만드세요.");
+          setBusy(false);
+          return;
+        }
+        const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const pinHash = await hashPin(pin, salt);
+        await metaRef.set({ pinHash, salt, createdAt: Date.now() });
+        sessionStorage.setItem("authedCode", code);
+        onSuccess();
+      } else {
+        if (!snap.exists || !snap.data().pinHash) {
+          // Old data without password — allow setup mode
+          setErr("이 코드는 PIN이 설정되지 않았어요. 잠시 후 다시 시도하세요.");
+          setBusy(false);
+          return;
+        }
+        const { pinHash, salt } = snap.data();
+        const hash = await hashPin(pin, salt);
+        if (hash !== pinHash) {
+          setErr("PIN이 틀렸어요");
+          setPin("");
+          setBusy(false);
+          return;
+        }
+        sessionStorage.setItem("authedCode", code);
+        onSuccess();
+      }
+    } catch (e) {
+      console.error(e);
+      setErr("오류가 발생했어요: " + (e.message || e.code));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#FFF5EE,#FAD4CB)"}}>
+      <div style={{fontSize:60,marginBottom:12}}>🔒</div>
+      <div style={{fontSize:22,fontWeight:800,marginBottom:4,letterSpacing:"-0.5px",color:"#3D2C2C"}}>
+        {mode==="setup" ? "PIN 설정하기" : "PIN 입력"}
+      </div>
+      <div style={{fontSize:12,color:"#9E7C7C",marginBottom:24,textAlign:"center",lineHeight:1.6,maxWidth:300}}>
+        {mode==="setup"
+          ? "다른 사람이 코드를 알아도 PIN 없이는 들어올 수 없어요"
+          : <>커플 코드 <span style={{fontFamily:"monospace",color:"#E8735A"}}>{code.length>20?code.slice(0,20)+"...":code}</span><br/>의 PIN을 입력하세요</>
+        }
+      </div>
+
+      <div style={{width:"100%",maxWidth:320}}>
+        <label style={{fontSize:11,color:"#9E7C7C",fontWeight:700,letterSpacing:"0.3px",marginBottom:6,display:"block"}}>{mode==="setup" ? "새 PIN (4자리 이상)" : "PIN"}</label>
+        <input autoFocus value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,8))}
+               type="password" inputMode="numeric" placeholder="••••"
+               style={{width:"100%",padding:"14px 16px",fontSize:18,letterSpacing:"6px",textAlign:"center",border:"2px solid #F0DDD8",borderRadius:12,background:"#fff",outline:"none",marginBottom:10,fontFamily:"inherit"}}
+               onKeyDown={e=>{ if(e.key==="Enter" && mode!=="setup") submit(); }}/>
+
+        {mode==="setup" && (
+          <>
+            <label style={{fontSize:11,color:"#9E7C7C",fontWeight:700,letterSpacing:"0.3px",marginBottom:6,display:"block"}}>PIN 다시 입력</label>
+            <input value={pin2} onChange={e=>setPin2(e.target.value.replace(/\D/g,"").slice(0,8))}
+                   type="password" inputMode="numeric" placeholder="••••"
+                   style={{width:"100%",padding:"14px 16px",fontSize:18,letterSpacing:"6px",textAlign:"center",border:"2px solid #F0DDD8",borderRadius:12,background:"#fff",outline:"none",marginBottom:10,fontFamily:"inherit"}}
+                   onKeyDown={e=>{ if(e.key==="Enter") submit(); }}/>
+          </>
+        )}
+
+        {err && (
+          <div style={{background:"#FFEBEE",color:"#C62828",borderRadius:10,padding:"10px 12px",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5}}>
+            ⚠️ {err}
+          </div>
+        )}
+
+        <button onClick={submit} disabled={busy||!pin}
+                style={{width:"100%",background:(busy||!pin)?"#ddd":"#E8735A",color:"#fff",border:"none",borderRadius:14,padding:"15px",fontSize:15,fontWeight:800,cursor:(busy||!pin)?"not-allowed":"pointer",marginBottom:8}}>
+          {busy ? "확인 중..." : (mode==="setup" ? "🔒 PIN 설정 완료" : "💖 들어가기")}
+        </button>
+        <button onClick={onChangeCode} style={{width:"100%",background:"none",border:"none",color:"#9E7C7C",fontSize:13,cursor:"pointer",padding:8}}>← 다른 코드 사용</button>
+      </div>
+
+      {mode==="setup" && (
+        <div style={{marginTop:16,fontSize:11,color:"#9E7C7C",textAlign:"center",maxWidth:280,lineHeight:1.6,padding:"10px 14px",background:"rgba(255,255,255,0.5)",borderRadius:10}}>
+          💡 상대방도 이 코드 + 이 PIN을 알아야 들어올 수 있어요. 둘 다 안전한 방법으로 공유하세요.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Root() {
   const [code, setCode] = useState(coupleCode);
-  const [ready, setReady] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(null); // null | "setup" | "verify"
   const [errMsg, setErrMsg] = useState("");
 
+  // Step 1: connect to Firebase + check if password is set
   useEffect(() => {
     if (!code) return;
-    setReady(false);
+    setConnected(false);
+    setAuthed(false);
+    setNeedsAuth(null);
     setErrMsg("");
 
     let done = false;
-    // Connection test: write to a path INSIDE couples/{code}/... so it matches security rules
-    const testRef = window.db.collection("couples").doc(code).collection("data").doc("_meta");
+    const authRef = window.db.collection("couples").doc(code).collection("data").doc("_auth");
 
     const timeout = setTimeout(() => {
       if (done) return;
@@ -1951,30 +2146,49 @@ function Root() {
       );
     }, 8000);
 
-    testRef.set({ lastSeen: Date.now() }, { merge: true })
-      .then(() => {
+    authRef.get()
+      .then(snap => {
         if (done) return;
         done = true;
         clearTimeout(timeout);
-        setReady(true);
+        setConnected(true);
+
+        const sessionAuthed = sessionStorage.getItem("authedCode") === code;
+        if (snap.exists && snap.data().pinHash) {
+          // Code has PIN. Check session.
+          if (sessionAuthed) {
+            setAuthed(true);
+          } else {
+            setNeedsAuth("verify");
+          }
+        } else {
+          // No PIN yet (new code)
+          setNeedsAuth("setup");
+        }
       })
       .catch(e => {
         if (done) return;
         done = true;
         clearTimeout(timeout);
         console.error("Firestore connection error:", e);
-        const code2 = e.code || "";
-        if (code2.includes("permission")) {
-          setErrMsg("Firestore 규칙 문제예요.\n\nFirebase 콘솔 → Firestore Database → '규칙' 탭에서\nREADME 의 규칙을 붙여넣고 '게시' 버튼을 눌렀는지 확인하세요.\n\n에러: " + code2);
-        } else if (code2.includes("unavailable")) {
-          setErrMsg("Firestore 서버에 연결할 수 없어요.\n\nFirebase 콘솔에서 Firestore Database 가\n실제로 '만들어져' 있는지 확인하세요.\n(프로젝트만 만들고 Database 생성을 안 한 경우가 많아요)\n\n에러: " + code2);
+        const c = e.code || "";
+        if (c.includes("permission")) {
+          setErrMsg("Firestore 규칙 문제예요.\n\nFirebase 콘솔 → Firestore Database → '규칙' 탭에서\nREADME 의 규칙을 붙여넣고 '게시' 버튼을 눌렀는지 확인하세요.\n\n에러: " + c);
+        } else if (c.includes("unavailable")) {
+          setErrMsg("Firestore 서버에 연결할 수 없어요.\n\nFirebase 콘솔에서 Firestore Database 가\n실제로 '만들어져' 있는지 확인하세요.\n\n에러: " + c);
         } else {
-          setErrMsg("연결 실패: " + (e.message || code2 || "알 수 없는 오류"));
+          setErrMsg("연결 실패: " + (e.message || c || "알 수 없는 오류"));
         }
       });
 
     return () => { done = true; clearTimeout(timeout); };
   }, [code]);
+
+  const clearAndReset = () => {
+    sessionStorage.removeItem("authedCode");
+    localStorage.removeItem("coupleCode");
+    location.reload();
+  };
 
   if (!code) {
     return <CodeEntry onSubmit={(c) => {
@@ -1995,7 +2209,7 @@ function Root() {
                   style={{background:"#E8735A",color:"#fff",border:"none",borderRadius:12,padding:"12px 20px",fontSize:14,fontWeight:800,cursor:"pointer"}}>
             🔄 다시 시도
           </button>
-          <button onClick={()=>{ localStorage.removeItem("coupleCode"); location.reload(); }}
+          <button onClick={clearAndReset}
                   style={{background:"#fff",color:"#E8735A",border:"2px solid #E8735A",borderRadius:12,padding:"11px 20px",fontSize:14,fontWeight:800,cursor:"pointer"}}>
             코드 다시 입력
           </button>
@@ -2004,7 +2218,7 @@ function Root() {
     );
   }
 
-  if (!ready) {
+  if (!connected) {
     return (
       <div className="splash">
         <div className="e">💕</div>
@@ -2014,15 +2228,18 @@ function Root() {
     );
   }
 
+  if (needsAuth && !authed) {
+    return <PinScreen mode={needsAuth} code={code} onSuccess={()=>{setAuthed(true);setNeedsAuth(null);}} onChangeCode={clearAndReset}/>;
+  }
+
   return (
     <>
       <App />
       <div style={{position:"fixed",bottom:90,right:10,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"4px 8px",fontSize:9,color:"#9E7C7C",boxShadow:"0 2px 6px rgba(0,0,0,0.08)",zIndex:5,fontFamily:"'Apple SD Gothic Neo',sans-serif"}}>
-        🔗 {code}
+        🔒 {code.length>14?code.slice(0,14)+"...":code}
         <button onClick={()=>{
-          if(confirm("로그아웃하시겠어요?\n(데이터는 보존되며 같은 코드로 다시 접속 가능합니다)")){
-            localStorage.removeItem("coupleCode");
-            location.reload();
+          if(confirm("로그아웃하시겠어요?\n(데이터는 보존되며 같은 코드+PIN으로 다시 접속 가능합니다)")){
+            clearAndReset();
           }
         }} style={{marginLeft:6,background:"none",border:"none",color:"#9E7C7C",cursor:"pointer",fontSize:11,padding:0}}>×</button>
       </div>
