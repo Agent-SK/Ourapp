@@ -17,11 +17,11 @@
     .splash .e { font-size:60px; animation: pulse 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
   </style>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 </head>
 <body>
   <div id="root"><div class="splash"><div class="e">💕</div><div>우리 둘이서</div></div></div>
@@ -731,68 +731,172 @@ function BudgetTab({names}) {
   const [records,setRecords]=useState([]);
   const [view,setView]=useState("calendar");
   const [payerFilter,setPayerFilter]=useState("all");
+  const [cycleDay,setCycleDay]=useState(1); // 결산 기준일 (1~28)
+  const [showCycleSetting,setShowCycleSetting]=useState(false);
+  const [periodOffset,setPeriodOffset]=useState(0); // 0=현재, -1=이전, +1=다음
+  const [drillPayer,setDrillPayer]=useState(null); // 클릭한 지출자 상세
 
-  useEffect(()=>{sGet("budget").then(d=>{
-    // Migrate: records without payer become "shared"
-    const migrated=(d||[]).map(r=>({...r,payer:r.payer||"shared"}));
-    setRecords(migrated);
-  });}, []);
+  useEffect(()=>{
+    sGet("budget").then(d=>{
+      const migrated=(d||[]).map(r=>({...r,payer:r.payer||"shared"}));
+      setRecords(migrated);
+    });
+    sGet("budgetCycleDay").then(d=>{ if(d) setCycleDay(d); });
+  },[]);
+
   const saveAll=async d=>{await sSet("budget",d);setRecords(d);};
   const addRec=async rec=>{await saveAll([...records,rec]);};
   const delRec=async id=>{await saveAll(records.filter(r=>r.id!==id));};
+  const saveCycleDay=async d=>{setCycleDay(d);await sSet("budgetCycleDay",d);setShowCycleSetting(false);};
 
+  // 기준일 기반 기간 계산
+  const getPeriod=(offset=0)=>{
+    const today=new Date();
+    const y=today.getFullYear(), m=today.getMonth(), d=today.getDate();
+    // 현재 사이클 시작: 이번달 cycleDay 이후면 이번달, 아니면 지난달
+    let startM=m, startY=y;
+    if(d<cycleDay){ startM=m-1; if(startM<0){startM=11;startY=y-1;} }
+    // offset 적용
+    startM+=offset; startY+=Math.floor(startM/12); startM=((startM%12)+12)%12;
+    const endM_raw=startM+1;
+    const endY=startY+(endM_raw>11?1:0);
+    const endM=endM_raw%12;
+    const startStr=`${startY}-${String(startM+1).padStart(2,"0")}-${String(cycleDay).padStart(2,"0")}`;
+    const endDay=cycleDay-1||new Date(endY,endM+1,0).getDate();
+    const endStr=`${endY}-${String(endM+1).padStart(2,"0")}-${String(endDay).padStart(2,"0")}`;
+    return {startStr,endStr,startY,startM,endY,endM,label:`${startM+1}/${cycleDay} ~ ${endM+1}/${endDay}`};
+  };
+
+  const period=getPeriod(periodOffset);
+
+  // 기간 내 기록 필터
+  const periodRecs=records.filter(r=>r.date>=period.startStr&&r.date<=period.endStr);
   const balance=records.reduce((s,r)=>s+(r.type==="income"?r.amount:-r.amount),0);
-  const mRecs=records.filter(r=>r.date.startsWith(thisMonth()));
-  const mInc=mRecs.filter(r=>r.type==="income").reduce((s,r)=>s+r.amount,0);
-  const mExp=mRecs.filter(r=>r.type==="expense").reduce((s,r)=>s+r.amount,0);
-  // Payer breakdown for this month's expenses
-  const byPayer={shared:0,me:0,you:0};
-  mRecs.filter(r=>r.type==="expense").forEach(r=>{byPayer[r.payer||"shared"]+=r.amount;});
+  const pInc=periodRecs.filter(r=>r.type==="income").reduce((s,r)=>s+r.amount,0);
+  const pExp=periodRecs.filter(r=>r.type==="expense").reduce((s,r)=>s+r.amount,0);
 
-  // Filter records by payer
+  // 지출자별 합계
+  const byPayer={shared:0,me:0,you:0};
+  periodRecs.filter(r=>r.type==="expense").forEach(r=>{byPayer[r.payer||"shared"]+=r.amount;});
+
+  // 필터 적용
   const filtered=payerFilter==="all"?records:records.filter(r=>(r.payer||"shared")===payerFilter);
-  const filteredM=filtered.filter(r=>r.date.startsWith(thisMonth())).filter(r=>r.type==="expense");
+  const filteredP=filtered.filter(r=>r.date>=period.startStr&&r.date<=period.endStr&&r.type==="expense");
   const catTotals={};
-  filteredM.forEach(r=>{catTotals[r.category]=(catTotals[r.category]||0)+r.amount;});
-  const topCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,4);
-  const filteredExpTotal=filteredM.reduce((s,r)=>s+r.amount,0);
+  filteredP.forEach(r=>{catTotals[r.category]=(catTotals[r.category]||0)+r.amount;});
+  const topCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const filteredExpTotal=filteredP.reduce((s,r)=>s+r.amount,0);
+
+  // 드릴다운: 특정 지출자의 카테고리별 상세
+  const drillRecs=drillPayer?periodRecs.filter(r=>r.type==="expense"&&(r.payer||"shared")===drillPayer):[];
+  const drillCats={};
+  drillRecs.forEach(r=>{drillCats[r.category]=(drillCats[r.category]||0)+r.amount;});
+  const drillTotal=drillRecs.reduce((s,r)=>s+r.amount,0);
+  const drillCatList=Object.entries(drillCats).sort((a,b)=>b[1]-a[1]);
+
+  const payerMeta={
+    shared:{label:"👫 공용",bg:"#FFE9C5",col:"#B8860B",lightBg:"#FFFAED"},
+    me:{label:`💙 ${names?.me||"나"}`,bg:"#D6E4FF",col:"#3A5FCD",lightBg:"#EEF4FF"},
+    you:{label:`🩷 ${names?.you||"상대방"}`,bg:"#FFD6E5",col:"#C2185B",lightBg:"#FFF0F5"},
+  };
 
   return (
     <div>
+      {/* 잔액 헤더 */}
       <div style={card({background:balance>=0?"linear-gradient(135deg,#EDFAF3,#C8E6C9)":"linear-gradient(135deg,#FFEBEE,#FFCDD2)",textAlign:"center"})}>
-        <div style={{fontSize:11,color:C.textMuted,marginBottom:2}}>현재 잔액</div>
+        <div style={{fontSize:11,color:C.textMuted,marginBottom:2}}>전체 잔액</div>
         <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",color:balance>=0?C.green:C.red}}>{fmtMoney(Math.abs(balance))}</div>
         <div style={{fontSize:11,marginBottom:10,color:balance>=0?C.green:C.red}}>{balance>=0?"흑자 🟢":"적자 🔴"}</div>
         <div style={{...row(24,"center","center")}}>
-          <div><div style={{fontSize:11,color:C.textMuted}}>이달 수입</div><div style={{fontWeight:700,color:C.green}}>+{fmtMoney(mInc)}</div></div>
+          <div><div style={{fontSize:11,color:C.textMuted}}>이 기간 수입</div><div style={{fontWeight:700,color:C.green}}>+{fmtMoney(pInc)}</div></div>
           <div style={{width:1,height:24,background:C.border}}/>
-          <div><div style={{fontSize:11,color:C.textMuted}}>이달 지출</div><div style={{fontWeight:700,color:C.red}}>-{fmtMoney(mExp)}</div></div>
+          <div><div style={{fontSize:11,color:C.textMuted}}>이 기간 지출</div><div style={{fontWeight:700,color:C.red}}>-{fmtMoney(pExp)}</div></div>
         </div>
       </div>
 
-      {mExp>0&&(
+      {/* 기간 네비게이션 */}
+      <div style={card({padding:"10px 14px"})}>
+        <div style={{...row(0,"center","space-between"),marginBottom:6}}>
+          <button onClick={()=>setPeriodOffset(o=>o-1)} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontWeight:700,fontSize:14,color:C.text}}>◀</button>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontWeight:800,fontSize:13,color:C.primary}}>{period.label}</div>
+            {periodOffset===0&&<div style={{fontSize:10,color:C.textMuted,marginTop:1}}>현재 기간</div>}
+          </div>
+          <button onClick={()=>setPeriodOffset(o=>Math.min(o+1,0))} style={{border:"none",background:C.bg,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontWeight:700,fontSize:14,color:periodOffset===0?C.border:C.text,cursor:periodOffset===0?"not-allowed":"pointer"}} disabled={periodOffset===0}>▶</button>
+        </div>
+        <button onClick={()=>setShowCycleSetting(s=>!s)} style={{...btn("#F5F5F5",C.textMuted),width:"100%",fontSize:11,padding:"6px",fontWeight:600}}>
+          ⚙️ 결산 기준일: 매월 {cycleDay}일
+        </button>
+        {showCycleSetting&&(
+          <div style={{marginTop:10,padding:12,background:C.bg,borderRadius:10}}>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:C.text}}>결산 기준일 선택</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+              {[1,5,10,11,15,20,21,25,28].map(d=>(
+                <button key={d} onClick={()=>saveCycleDay(d)} style={{padding:"8px 4px",border:`2px solid ${cycleDay===d?C.primary:C.border}`,borderRadius:8,background:cycleDay===d?C.primaryLight:C.card,cursor:"pointer",fontWeight:cycleDay===d?800:600,fontSize:13,color:C.text,...base}}>{d}일</button>
+              ))}
+            </div>
+            <div style={{fontSize:10,color:C.textMuted,marginTop:8}}>💡 선택한 날짜부터 다음달 {cycleDay===1?28:cycleDay-1}일까지가 한 사이클이에요</div>
+          </div>
+        )}
+      </div>
+
+      {/* 지출자별 카드 — 탭하면 드릴다운 */}
+      {pExp>0&&(
         <div style={card()}>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:C.textMuted,letterSpacing:"0.3px"}}>👫 이달 지출자별</div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:C.textMuted,letterSpacing:"0.3px"}}>👫 이 기간 지출자별 <span style={{fontSize:10,fontWeight:500}}>(탭하면 상세)</span></div>
           <div style={{...row(8)}}>
-            {[
-              ["shared","👫 공용","#FFE9C5","#B8860B"],
-              ["me",`💙 ${names?.me||"나"}`,"#D6E4FF","#3A5FCD"],
-              ["you",`🩷 ${names?.you||"상대방"}`,"#FFD6E5","#C2185B"],
-            ].map(([k,l,bg,col])=>{
+            {["shared","me","you"].map(k=>{
+              const {label,bg,col}=payerMeta[k];
               const amt=byPayer[k]||0;
-              const pct=mExp>0?(amt/mExp*100):0;
+              const pct=pExp>0?(amt/pExp*100):0;
+              const active=drillPayer===k;
               return (
-                <div key={k} style={{flex:1,background:bg,borderRadius:10,padding:"9px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:col,marginBottom:2}}>{l}</div>
+                <button key={k} onClick={()=>setDrillPayer(drillPayer===k?null:k)}
+                  style={{flex:1,background:active?"#fff":bg,borderRadius:10,padding:"9px 8px",textAlign:"center",border:`2px solid ${active?col:"transparent"}`,cursor:"pointer",...base,boxShadow:active?"0 2px 8px rgba(0,0,0,0.1)":"none",transition:"all 0.15s"}}>
+                  <div style={{fontSize:10,fontWeight:700,color:col,marginBottom:2}}>{label}</div>
                   <div style={{fontSize:13,fontWeight:800,color:C.text,letterSpacing:"-0.3px"}}>{fmtMoney(amt)}</div>
                   <div style={{fontSize:9,color:C.textMuted,marginTop:1}}>{pct.toFixed(0)}%</div>
-                </div>
+                </button>
               );
             })}
           </div>
+
+          {/* 드릴다운 상세 */}
+          {drillPayer&&drillCatList.length>0&&(
+            <div style={{marginTop:12,padding:12,background:payerMeta[drillPayer].lightBg,borderRadius:10,border:`1px solid ${payerMeta[drillPayer].bg}`}}>
+              <div style={{...row(0,"center","space-between"),marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:800,color:payerMeta[drillPayer].col}}>{payerMeta[drillPayer].label} 상세 지출</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.textMuted}}>총 {fmtMoney(drillTotal)}</div>
+              </div>
+              {drillCatList.map(([cat,amt])=>(
+                <div key={cat} style={{marginBottom:8}}>
+                  <div style={{...row(0,"center","space-between"),fontSize:12,marginBottom:3}}>
+                    <span style={{fontWeight:600}}>{cat}</span>
+                    <span style={{fontWeight:800,color:payerMeta[drillPayer].col}}>{fmtMoney(amt)}</span>
+                  </div>
+                  <div style={{height:5,background:"rgba(255,255,255,0.6)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{width:`${drillTotal>0?(amt/drillTotal)*100:0}%`,height:"100%",background:payerMeta[drillPayer].col,borderRadius:3,opacity:0.7}}/>
+                  </div>
+                  {/* 해당 카테고리 개별 내역 */}
+                  <div style={{paddingLeft:4,marginTop:3}}>
+                    {drillRecs.filter(r=>r.category===cat).sort((a,b)=>b.date.localeCompare(a.date)).map(r=>(
+                      <div key={r.id} style={{...row(0,"center","space-between"),fontSize:11,color:C.textMuted,padding:"2px 0"}}>
+                        <span>{fmtDate(r.date)}{r.memo?` · ${r.memo}`:""}</span>
+                        <span style={{fontWeight:600}}>{fmtMoney(r.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {drillPayer&&drillCatList.length===0&&(
+            <div style={{marginTop:10,textAlign:"center",color:C.textMuted,fontSize:12,padding:12}}>이 기간 지출 내역이 없어요</div>
+          )}
         </div>
       )}
 
+      {/* 필터 탭 */}
       <div style={{background:C.bg,borderRadius:12,padding:3,marginBottom:10,display:"flex"}}>
         {[["all","✨ 전체"],["shared","👫 공용"],["me",`💙 ${names?.me||"나"}`],["you",`🩷 ${names?.you||"상대방"}`]].map(([k,l])=>(
           <button key={k} onClick={()=>setPayerFilter(k)} style={{flex:1,border:"none",borderRadius:10,padding:"7px 4px",cursor:"pointer",fontWeight:payerFilter===k?800:600,fontSize:11,background:payerFilter===k?C.card:"transparent",color:payerFilter===k?C.primary:C.textMuted,boxShadow:payerFilter===k?"0 1px 4px rgba(0,0,0,0.08)":"none",...base,transition:"all 0.15s"}}>{l}</button>
@@ -807,11 +911,15 @@ function BudgetTab({names}) {
         </div>
       </div>
 
-      {view==="calendar"&&<BudgetCalendar records={filtered} onAdd={addRec} onDelete={delRec} names={names}/>}
+      {view==="calendar"&&<BudgetCalendar records={filtered} onAdd={addRec} onDelete={delRec} names={names} cycleDay={cycleDay} periodOffset={periodOffset}/>}
 
+      {/* TOP 지출 */}
       {topCats.length>0&&(
         <div style={card()}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>이달 지출 TOP {payerFilter!=="all"&&<span style={{fontSize:11,fontWeight:600,color:C.textMuted}}>({payerFilter==="shared"?"공용":payerFilter==="me"?names?.me:names?.you})</span>}</div>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>
+            이 기간 지출 TOP
+            {payerFilter!=="all"&&<span style={{fontSize:11,fontWeight:600,color:C.textMuted}}> ({payerFilter==="shared"?"공용":payerFilter==="me"?names?.me:names?.you})</span>}
+          </div>
           {topCats.map(([cat,amt])=>(
             <div key={cat} style={{marginBottom:8}}>
               <div style={{...row(0,"center","space-between"),fontSize:12,marginBottom:3}}><span>{cat}</span><span style={{fontWeight:700}}>{fmtMoney(amt)}</span></div>
@@ -823,11 +931,11 @@ function BudgetTab({names}) {
         </div>
       )}
 
+      {/* 목록 뷰 */}
       {view==="list"&&(
         <>
           {[...filtered].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(r=>{
-            const payerLabel=r.payer==="me"?`💙 ${names?.me||"나"}`:r.payer==="you"?`🩷 ${names?.you||"상대방"}`:"👫 공용";
-            const payerBg=r.payer==="me"?"#D6E4FF":r.payer==="you"?"#FFD6E5":"#FFF3D6";
+            const pm=payerMeta[r.payer||"shared"];
             return (
               <div key={r.id} style={{...card(),...row(12,"center")}}>
                 <div style={{width:40,height:40,borderRadius:12,background:r.type==="income"?C.greenLt:C.redLt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{r.type==="income"?"💵":"💸"}</div>
@@ -835,7 +943,7 @@ function BudgetTab({names}) {
                   <div style={{...row(0,"center","space-between")}}>
                     <div style={row(6)}>
                       <span style={{fontWeight:700}}>{r.category}</span>
-                      <span style={{fontSize:10,background:payerBg,padding:"2px 6px",borderRadius:8,fontWeight:700,color:C.text}}>{payerLabel}</span>
+                      <span style={{fontSize:10,background:pm.bg,padding:"2px 6px",borderRadius:8,fontWeight:700,color:C.text}}>{pm.label}</span>
                     </div>
                     <span style={{fontWeight:800,color:r.type==="income"?C.green:C.red}}>{r.type==="income"?"+":"−"}{fmtMoney(r.amount)}</span>
                   </div>
