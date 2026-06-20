@@ -30,12 +30,12 @@
     // ⚠️ ⚠️ ⚠️  여기에 본인의 Firebase 설정을 붙여넣으세요  ⚠️ ⚠️ ⚠️
     // README.md 의 "Firebase 설정" 단계 참고
     const firebaseConfig = {
-      apiKey: "AIzaSyDyM6qnMj1CjElNajKMWFd--2pcRydfOj4",
-      authDomain: "uriuri-38f6f.firebaseapp.com",
-      projectId: "uriuri-38f6f",
-      storageBucket: "uriuri-38f6f.firebasestorage.app",
-      messagingSenderId: "581002051198",
-      appId: "1:581002051198:web:7059c93335b7a1e58ca22f"
+      apiKey: "YOUR_API_KEY_HERE",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:xxxxxxxxxxxx"
     };
 
     try {
@@ -71,22 +71,9 @@ const lbl = { fontSize:11,color:C.textMuted,marginBottom:4,display:"block",fontW
 const row = (gap=0,align="center",justify="flex-start") => ({ display:"flex",flexDirection:"row",gap,alignItems:align,justifyContent:justify });
 const col = (gap=0) => ({ display:"flex",flexDirection:"column",gap });
 
-let coupleCode = (typeof localStorage !== "undefined" ? localStorage.getItem("coupleCode") : "") || "";
-let _listeners = {};
-
-async function sGet(k) {
-  if (!coupleCode || !window.db) return null;
-  try {
-    const doc = await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).get();
-    return doc.exists ? doc.data().value : null;
-  } catch (e) { console.error("sGet error:", k, e); return null; }
-}
-async function sSet(k, v) {
-  if (!coupleCode || !window.db) return;
-  try {
-    await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).set({ value: v, updated: Date.now() });
-  } catch (e) { console.error("sSet error:", k, e); }
-}
+let coupleCode=(typeof localStorage!=="undefined"?localStorage.getItem("coupleCode"):"")||"";
+async function sGet(k){if(!coupleCode||!window.db)return null;try{const doc=await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).get();return doc.exists?doc.data().value:null;}catch(e){return null;}}
+async function sSet(k,v){if(!coupleCode||!window.db)return;try{await window.db.collection("couples").doc(coupleCode).collection("data").doc(k).set({value:v,updated:Date.now()});}catch(e){}}
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 const thisMonth = () => new Date().toISOString().slice(0,7);
@@ -484,7 +471,8 @@ function CatsTab({names}) {
   };
 
   const todayRec=records.find(r=>r.date===todayStr())||{date:todayStr(),tasks:{}};
-  const doneCount=Object.keys(todayRec.tasks||{}).length;
+  const doneCount=Object.values(todayRec.tasks||{}).filter(t=>t.who!=="못함").length;
+  const checkedCount=Object.keys(todayRec.tasks||{}).length;
 
   const toggle=async(taskId,who)=>{
     const cur=todayRec.tasks[taskId];
@@ -496,7 +484,7 @@ function CatsTab({names}) {
   };
 
   const recentDays=[...new Set(records.map(r=>r.date))].sort().reverse().slice(0,7);
-  const score=who=>records.reduce((s,r)=>s+Object.values(r.tasks||{}).filter(t=>t.who===who).length,0);
+  const score=who=>records.reduce((s,r)=>s+Object.values(r.tasks||{}).filter(t=>t.who===who&&t.who!=="못함").length,0);
 
   return (
     <div>
@@ -504,7 +492,7 @@ function CatsTab({names}) {
         <div>
           <div style={{fontSize:11,color:C.textMuted}}>오늘의 냐옹이 케어</div>
           <div style={{fontSize:40,fontWeight:800,color:C.sage,letterSpacing:"-1px"}}>{doneCount}<span style={{fontSize:18}}>/{CAT_TASKS.length}</span></div>
-          <div style={{fontSize:12,color:C.textMuted}}>{doneCount===CAT_TASKS.length?"🎉 오늘 완료!":CAT_TASKS.length-doneCount+"개 남음"}</div>
+          <div style={{fontSize:12,color:C.textMuted}}>{doneCount===CAT_TASKS.length?"🎉 오늘 완료!":CAT_TASKS.length-checkedCount+"개 남음"}</div>
         </div>
         <div style={{fontSize:50}}>🐱</div>
       </div>
@@ -521,11 +509,19 @@ function CatsTab({names}) {
                 {done&&<span style={{...chip(C.sageLt,C.sage),marginLeft:"auto"}}>✓ {done.who} {done.time}</span>}
               </div>
               <div style={{...row(8),paddingLeft:28}}>
-                {[names.me,names.you].map(who=>(
-                  <button key={who} onClick={()=>toggle(task.id,who)} style={{flex:1,padding:8,border:`2px solid ${done?.who===who?C.sage:C.border}`,borderRadius:10,background:done?.who===who?C.sageLt:C.bg,cursor:"pointer",fontSize:12,fontWeight:done?.who===who?800:500,...base,color:C.text}}>
-                    {done?.who===who?"✓ ":""}{who}
-                  </button>
-                ))}
+                {[
+                  [names.me, C.sage, C.sageLt, "💙"],
+                  [names.you, C.primary, C.primaryLight, "🩷"],
+                  ["못함", "#9E9E9E", "#F5F5F5", "😿"],
+                ].map(([who, activeColor, activeBg, emoji])=>{
+                  const active=done?.who===who;
+                  return (
+                    <button key={who} onClick={()=>toggle(task.id,who)} style={{flex:1,padding:"7px 4px",border:`2px solid ${active?activeColor:C.border}`,borderRadius:10,background:active?activeBg:C.bg,cursor:"pointer",fontSize:11,fontWeight:active?800:500,...base,color:C.text,textAlign:"center"}}>
+                      <div style={{fontSize:14,lineHeight:1,marginBottom:2}}>{active?"✓":emoji}</div>
+                      <div>{who}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -560,8 +556,12 @@ function CatsTab({names}) {
               <div key={date} style={{...row(0,"center","space-between"),padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
                 <span style={{fontSize:13,fontWeight:date===todayStr()?700:400,color:date===todayStr()?C.primary:C.text}}>{date===todayStr()?"오늘":fmtDate(date)}</span>
                 <div style={row(5)}>
-                  {CAT_TASKS.map(t=><span key={t.id} style={{fontSize:15,opacity:rec?.tasks[t.id]?1:0.15}}>{t.emoji}</span>)}
-                  <span style={{...chip(cnt===3?C.sageLt:C.primaryLight),marginLeft:4}}>{cnt}/3</span>
+                  {CAT_TASKS.map(t=>{
+                    const taskRec=rec?.tasks[t.id];
+                    const isMot=taskRec?.who==="못함";
+                    return <span key={t.id} style={{fontSize:15,opacity:taskRec?1:0.15,filter:isMot?"grayscale(1)":"none"}}>{t.emoji}</span>;
+                  })}
+                  <span style={{...chip(cnt===CAT_TASKS.length?C.sageLt:C.primaryLight),marginLeft:4}}>{Object.values(rec?.tasks||{}).filter(t=>t.who!=="못함").length}/{CAT_TASKS.length}</span>
                 </div>
               </div>
             );
